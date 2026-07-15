@@ -35,6 +35,7 @@ class Text:
 class Run:
     char_pr_id: int
     texts: list = field(default_factory=list)
+    table: "Table" = None
 
 
 @dataclass
@@ -50,6 +51,7 @@ class Header:
     fonts_by_lang: dict = field(default_factory=dict)
     char_prs: list = field(default_factory=list)
     para_prs: list = field(default_factory=list)
+    border_fills: list = field(default_factory=list)
 
 
 @dataclass
@@ -68,3 +70,48 @@ class OwpmlDocument:
     header: Header
     sections: list
     metadata: Metadata
+
+
+@dataclass
+class Border:
+    kind: str
+    type: str = "NONE"
+    width: str = "0.1 mm"
+    color: str = "#000000"
+
+
+@dataclass
+class BorderFill:
+    id: int
+    borders: list = field(default_factory=list)
+    fill_color: str = None
+
+
+@dataclass
+class Tc:
+    col_addr: int = 0
+    row_addr: int = 0
+    col_span: int = 1
+    row_span: int = 1
+    width: int = 0
+    height: int = 0
+    border_fill_id: int = 0
+    valign: str = "CENTER"
+    paras: list = field(default_factory=list)
+
+
+@dataclass
+class TableRow:
+    cells: list = field(default_factory=list)
+
+
+@dataclass
+class Table:
+    id: int = 0
+    row_cnt: int = 0
+    col_cnt: int = 0
+    cell_spacing: int = 0
+    border_fill_id: int = 0
+    width: int = 0
+    height: int = 0
+    rows: list = field(default_factory=list)
