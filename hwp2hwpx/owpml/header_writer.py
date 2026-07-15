@@ -9,10 +9,10 @@ def _hh(tag):
     return "{%s}%s" % (NS["hh"], tag)
 
 
-def header_xml(header):
+def header_xml(header, sec_cnt=1):
     root = etree.Element(_hh("head"), nsmap=_NSMAP)
     root.set("version", "1.5")
-    root.set("secCnt", "1")
+    root.set("secCnt", str(sec_cnt))
     ref = etree.SubElement(root, _hh("refList"))
 
     fonts_el = etree.SubElement(ref, _hh("fontfaces"))
@@ -50,5 +50,13 @@ def header_xml(header):
         al = etree.SubElement(pe, _hh("align"))
         al.set("horizontal", pp.align)
         al.set("vertical", "BASELINE")
+
+    # Real style mapping is a follow-up milestone; for now emit a single
+    # default style (id 0) so every paragraph's styleIDRef="0" resolves
+    # to something instead of dangling.
+    styles_el = etree.SubElement(ref, _hh("styles"))
+    styles_el.set("itemCnt", "1")
+    style_el = etree.SubElement(styles_el, _hh("style"))
+    style_el.set("id", "0")
 
     return XML_DECL + etree.tostring(root, encoding="UTF-8")

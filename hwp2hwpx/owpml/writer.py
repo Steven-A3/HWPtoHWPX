@@ -27,7 +27,7 @@ def write_hwpx(doc, out_path):
     parts = {
         "version.xml": package_parts.version_xml(),
         "settings.xml": package_parts.settings_xml(),
-        "Contents/header.xml": header_xml(doc.header),
+        "Contents/header.xml": header_xml(doc.header, sec_cnt=len(doc.sections)),
         "Contents/content.hpf": package_parts.content_hpf(doc.metadata, len(doc.sections)),
         "META-INF/container.xml": package_parts.container_xml(),
         "META-INF/manifest.xml": package_parts.manifest_xml(),

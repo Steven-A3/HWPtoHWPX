@@ -21,8 +21,15 @@ def map_document(hwp_doc, title=""):
         for hpar in hsec.paragraphs:
             runs = [Run(char_pr_id=r.char_shape_id, texts=[Text(r.text)])
                     for r in hpar.runs]
+            if not runs:
+                # Hancom always emits at least one <hp:run> per <hp:p>,
+                # even when the paragraph has no text.
+                runs = [Run(char_pr_id=0, texts=[])]
+            # style_id is clamped to 0 because header.xml does not yet emit
+            # a real <hh:style> table (only the single default style id 0);
+            # real style mapping (hpar.style_id) is a follow-up milestone.
             paras.append(Para(id=para_id, para_pr_id=hpar.para_shape_id,
-                              style_id=hpar.style_id, runs=runs))
+                              style_id=0, runs=runs))
             para_id += 1
         sections.append(Section(paras=paras))
     return OwpmlDocument(header=header, sections=sections,
