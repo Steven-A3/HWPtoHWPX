@@ -3,7 +3,10 @@ import os
 import sys
 import subprocess
 from lxml import etree
-from .model import HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo
+from .model import (
+    HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
+    HwpRun, HwpParagraph, HwpSection, HwpDocument,
+)
 
 _ALIGN_MAP = {
     "left": "LEFT", "center": "CENTER", "right": "RIGHT",
@@ -72,3 +75,36 @@ def read_docinfo(xml_bytes):
         para_shapes.append(HwpParaShape(index=i, align=_ALIGN_MAP.get(raw, "LEFT")))
 
     return HwpDocInfo(fonts=fonts, char_shapes=char_shapes, para_shapes=para_shapes)
+
+
+def _paragraph_runs(para_el):
+    """One run per <Text> directly under the paragraph's LineSegs (skips
+    ControlChars and any table-cell text nested deeper)."""
+    runs = []
+    for text_el in para_el.findall("LineSeg/Text"):
+        content = text_el.text or ""
+        if content:
+            runs.append(HwpRun(
+                char_shape_id=_int(text_el.get("charshape-id")),
+                text=content,
+            ))
+    return runs
+
+
+def read_document(xml_bytes):
+    docinfo = read_docinfo(xml_bytes)
+    root = etree.fromstring(xml_bytes)
+    sections = []
+    for sec_el in root.findall(".//SectionDef"):
+        paras = []
+        for col in sec_el.findall("ColumnSet"):
+            for para_el in col.findall("Paragraph"):
+                paras.append(HwpParagraph(
+                    para_shape_id=_int(para_el.get("parashape-id")),
+                    style_id=_int(para_el.get("style-id")),
+                    runs=_paragraph_runs(para_el),
+                ))
+        sections.append(HwpSection(paragraphs=paras))
+    if not sections:
+        sections = [HwpSection(paragraphs=[])]
+    return HwpDocument(docinfo=docinfo, sections=sections)

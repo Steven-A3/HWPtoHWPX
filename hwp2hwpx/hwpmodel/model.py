@@ -29,3 +29,27 @@ class HwpDocInfo:
     fonts: list = field(default_factory=list)
     char_shapes: list = field(default_factory=list)
     para_shapes: list = field(default_factory=list)
+
+
+@dataclass
+class HwpRun:
+    char_shape_id: int
+    text: str
+
+
+@dataclass
+class HwpParagraph:
+    para_shape_id: int
+    style_id: int = 0
+    runs: list = field(default_factory=list)
+
+
+@dataclass
+class HwpSection:
+    paragraphs: list = field(default_factory=list)
+
+
+@dataclass
+class HwpDocument:
+    docinfo: HwpDocInfo
+    sections: list = field(default_factory=list)
