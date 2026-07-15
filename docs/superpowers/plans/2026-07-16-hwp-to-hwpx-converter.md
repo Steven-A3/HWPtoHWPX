@@ -967,18 +967,22 @@ git commit -m "feat: HWP reader dump via hwp5proc + captured fixture"
 
 **Files:**
 - Create: `hwp2hwpx/hwpmodel/model.py`
-- Modify: `hwp2hwpx/hwpmodel/reader.py` (add `read_docinfo`)
+- Modify: `hwp2hwpx/hwpmodel/reader.py` (make `hwp5_xml` robust + add `read_docinfo`)
 - Create: `tests/test_reader_docinfo.py`
 
 **Interfaces:**
 - Produces in `hwp2hwpx.hwpmodel.model` (dataclasses):
   - `HwpFont(index: int, name: str)`
-  - `HwpCharShape(index: int, base_size: int, color: int, font_id: int, bold: bool, italic: bool)`  # base_size in HWPUNIT (1/100 pt)
+  - `HwpCharShape(index: int, base_size: int, text_color: str, font_id: int, bold: bool, italic: bool)`  # base_size in HWPUNIT (1/100 pt); text_color is a `#RRGGBB` string
   - `HwpParaShape(index: int, align: str)`  # align normalized to LEFT/CENTER/RIGHT/JUSTIFY/DISTRIBUTE
-  - `HwpDocInfo(fonts: list[HwpFont], char_shapes: list[HwpCharShape], para_shapes: list[HwpParaShape])`
+  - `HwpDocInfo(fonts, char_shapes, para_shapes)`
 - Produces: `hwp2hwpx.hwpmodel.reader.read_docinfo(xml_bytes: bytes) -> HwpDocInfo` parsing the dump from Task 8.
 
-**NOTE:** The XPath/tag names below assume pyhwp's default emission (`FaceName`, `CharShape`, `ParaShape`). Confirm against the Task 8 fixture and adjust literals if they differ. Test asserts against the *actual* captured fixture, so it is self-correcting.
+**GROUND TRUTH (from the Task 8 fixture — these are the REAL pyhwp 0.1b15 names, verified):**
+- Root `<HwpDoc>` → `<DocInfo>` → `<IdMappings>` holds flat, **id-less, positional** lists: `<FaceName name="굴림체" .../>` (65 of them), `<CharShape basesize="1000" bold="0" italic="0" text-color="#000000">` with a child `<FontFace ko=".." en=".." cn=".." jp=".." other=".." symbol=".." user=".."/>` (103), `<ParaShape align="center|left|right|both" .../>` (126). Index in document order == the id referenced elsewhere (`charshape-id`, `parashape-id`).
+- **Fonts are grouped by language** in the flat list, in the fixed order `ko, en, cn, jp, other, symbol, user`, with per-group counts on `IdMappings` attributes `ko-fonts`, `en-fonts`, `cn-fonts`, `jp-fonts`, `other-fonts`, `symbol-fonts`, `user-fonts`. A CharShape's `FontFace/@ko` is a 0-based index **within the ko sub-range**; the global FaceName index = `ko_group_offset + FontFace@ko`. This task resolves each char shape's representative font from its **ko** font (Korean docs); per-language font refs are a later fidelity refinement.
+- `text-color` is already a `#RRGGBB` string — pass it through, do NOT do BGR-int conversion.
+- `align` values seen: `both` (→JUSTIFY), `center`, `left`, `right`. Include `justify`/`distribute`/`divide` in the map defensively.
 
 - [ ] **Step 1: Write failing test `tests/test_reader_docinfo.py`**
 
@@ -995,22 +999,28 @@ def _docinfo():
 
 def test_fonts_parsed():
     di = _docinfo()
-    assert len(di.fonts) > 0
+    assert len(di.fonts) == 65
+    assert di.fonts[0].name == "굴림체"
     assert all(isinstance(f.name, str) and f.name for f in di.fonts)
 
 
 def test_char_shapes_have_font_and_size():
     di = _docinfo()
-    assert len(di.char_shapes) > 0
+    assert len(di.char_shapes) == 103
     cs = di.char_shapes[0]
-    assert cs.base_size > 0
-    assert cs.font_id >= 0
+    assert cs.base_size == 1000
+    assert cs.text_color.startswith("#") and len(cs.text_color) == 7
+    # CharShape[0] FontFace ko=12, ko group starts at global offset 0 -> font_id 12
+    assert cs.font_id == 12
+    assert 0 <= cs.font_id < len(di.fonts)
 
 
 def test_para_shapes_have_align():
     di = _docinfo()
-    assert len(di.para_shapes) > 0
-    assert di.para_shapes[0].align in {"LEFT", "CENTER", "RIGHT", "JUSTIFY", "DISTRIBUTE"}
+    assert len(di.para_shapes) == 126
+    assert {p.align for p in di.para_shapes} <= {
+        "LEFT", "CENTER", "RIGHT", "JUSTIFY", "DISTRIBUTE"}
+    assert any(p.align == "CENTER" for p in di.para_shapes)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1035,7 +1045,7 @@ class HwpFont:
 class HwpCharShape:
     index: int
     base_size: int
-    color: int = 0
+    text_color: str = "#000000"
     font_id: int = 0
     bold: bool = False
     italic: bool = False
@@ -1054,50 +1064,82 @@ class HwpDocInfo:
     para_shapes: list = field(default_factory=list)
 ```
 
-- [ ] **Step 4: Add `read_docinfo` to `hwp2hwpx/hwpmodel/reader.py`**
+- [ ] **Step 4: Update `hwp2hwpx/hwpmodel/reader.py` — make `hwp5_xml` robust, add `read_docinfo`**
+
+Replace the current top of the file (the `import subprocess` + `hwp5_xml`) with the block below (locating `hwp5proc` next to the running interpreter so tests/CLI work without `.venv/bin` on `PATH`), then append `read_docinfo`:
 
 ```python
+"""Read a .hwp file into an in-memory model, via pyhwp's hwp5proc XML dump."""
+import os
+import sys
+import subprocess
 from lxml import etree
 from .model import HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo
 
 _ALIGN_MAP = {
     "left": "LEFT", "center": "CENTER", "right": "RIGHT",
-    "both": "JUSTIFY", "justify": "JUSTIFY", "distribute": "DISTRIBUTE",
+    "both": "JUSTIFY", "justify": "JUSTIFY",
+    "distribute": "DISTRIBUTE", "divide": "DISTRIBUTE",
 }
 
+# HWP5 font language groups, in the fixed order pyhwp lays FaceName elements out.
+_FONT_LANGS = ("ko", "en", "cn", "jp", "other", "symbol", "user")
 
-def _int_attr(el, *names, default=0):
-    for n in names:
-        v = el.get(n)
-        if v is not None:
-            try:
-                return int(v, 0)
-            except ValueError:
-                pass
-    return default
+
+def _hwp5proc():
+    """Locate hwp5proc next to the current interpreter, else rely on PATH."""
+    candidate = os.path.join(os.path.dirname(sys.executable), "hwp5proc")
+    return candidate if os.path.exists(candidate) else "hwp5proc"
+
+
+def hwp5_xml(hwp_path):
+    """Return pyhwp's full XML dump of the parsed HWP record tree."""
+    return subprocess.check_output([_hwp5proc(), "xml", hwp_path])
+
+
+def _int(v, default=0):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _font_group_offsets(id_mappings):
+    """Global start index of each language group within the flat FaceName list."""
+    offsets = {}
+    running = 0
+    for lang in _FONT_LANGS:
+        offsets[lang] = running
+        running += _int(id_mappings.get("%s-fonts" % lang))
+    return offsets
 
 
 def read_docinfo(xml_bytes):
     root = etree.fromstring(xml_bytes)
-    fonts = []
-    for i, el in enumerate(root.iter("FaceName")):
-        name = el.get("font_name") or el.get("name") or ""
-        fonts.append(HwpFont(index=i, name=name))
+    id_mappings = root.find(".//IdMappings")
+    if id_mappings is None:
+        return HwpDocInfo()
+    offsets = _font_group_offsets(id_mappings)
+
+    fonts = [HwpFont(index=i, name=el.get("name") or "")
+             for i, el in enumerate(id_mappings.findall("FaceName"))]
 
     char_shapes = []
-    for i, el in enumerate(root.iter("CharShape")):
+    for i, el in enumerate(id_mappings.findall("CharShape")):
+        ff = el.find("FontFace")
+        ko_local = _int(ff.get("ko")) if ff is not None else 0
         char_shapes.append(HwpCharShape(
             index=i,
-            base_size=_int_attr(el, "basesize", "base_size", default=1000),
-            color=_int_attr(el, "text_color", "color"),
-            font_id=_int_attr(el, "font_id", "face_name_ids"),
-            bold=el.get("bold") in ("1", "true", "True"),
-            italic=el.get("italic") in ("1", "true", "True"),
+            base_size=_int(el.get("basesize"), 1000),
+            text_color=el.get("text-color") or "#000000",
+            font_id=offsets.get("ko", 0) + ko_local,
+            bold=el.get("bold") == "1",
+            italic=el.get("italic") == "1",
         ))
 
     para_shapes = []
-    for i, el in enumerate(root.iter("ParaShape")):
-        raw = (el.get("align") or el.get("alignment") or "left").lower()
+    for i, el in enumerate(id_mappings.findall("ParaShape")):
+        raw = (el.get("align") or "left").lower()
         para_shapes.append(HwpParaShape(index=i, align=_ALIGN_MAP.get(raw, "LEFT")))
 
     return HwpDocInfo(fonts=fonts, char_shapes=char_shapes, para_shapes=para_shapes)
@@ -1106,7 +1148,7 @@ def read_docinfo(xml_bytes):
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `.venv/bin/pytest tests/test_reader_docinfo.py -v`
-Expected: PASS. If a test fails because a tag/attr name differs, update the literal (`FaceName`/`CharShape`/`ParaShape` and attribute names) to match the Task 8 fixture, then re-run.
+Expected: PASS (3 tests).
 
 - [ ] **Step 6: Commit**
 
@@ -1127,12 +1169,16 @@ git commit -m "feat: parse HWP DocInfo (fonts, char/para shapes)"
 **Interfaces:**
 - Produces in `hwp2hwpx.hwpmodel.model`:
   - `HwpRun(char_shape_id: int, text: str)`
-  - `HwpParagraph(para_shape_id: int, runs: list[HwpRun])`
-  - `HwpSection(paragraphs: list[HwpParagraph])`
-  - `HwpDocument(docinfo: HwpDocInfo, sections: list[HwpSection])`
+  - `HwpParagraph(para_shape_id: int, style_id: int = 0, runs=[])`
+  - `HwpSection(paragraphs=[])`
+  - `HwpDocument(docinfo, sections=[])`
 - Produces: `hwp2hwpx.hwpmodel.reader.read_document(xml_bytes: bytes) -> HwpDocument`.
 
-**NOTE:** In HWP, a paragraph's text is one string with char-shape "position runs" (`ParaCharShape` maps character offsets → char-shape ids). For this first pass, split the paragraph text into runs at those offsets; if offset data isn't cleanly available in the fixture, emit a single run per paragraph using the paragraph's first char-shape id (record this simplification as a harness gap, do not crash).
+**GROUND TRUTH (from the Task 8 fixture — verified):**
+- Sections are `BodyText/SectionDef` elements (NOT `Section`). Each section's top-level body paragraphs are the **direct** `Paragraph` children of the section's `ColumnSet` (`SectionDef/ColumnSet/Paragraph`).
+- There is **no `ParaText`/`ParaCharShape`**. A paragraph's text runs are `<Text charshape-id=".." lang="..">…</Text>` elements sitting directly under the paragraph's `<LineSeg>` children, interleaved with `<ControlChar>` (breaks/tabs — skip them for text). Each `Text` element is one run → **multiple runs per paragraph** naturally.
+- Tables nest more `Paragraph`s deep under `Paragraph/LineSeg/TableControl/TableBody/TableRow/TableCell/…`. This task takes ONLY the top-level body paragraphs via `SectionDef/ColumnSet/Paragraph` and reads runs via `Paragraph/LineSeg/Text` (direct children), which **excludes** table-cell text. Table content is out of scope here — a follow-up plan. Empty paragraphs (no `Text` runs) are kept as run-less paragraphs.
+- `Paragraph/@parashape-id` and `@style-id` are the shape/style references.
 
 - [ ] **Step 1: Write failing test `tests/test_reader_body.py`**
 
@@ -1147,22 +1193,28 @@ def _doc():
         return read_document(f.read())
 
 
-def test_has_sections_and_paragraphs():
+def test_has_one_section_with_many_paragraphs():
     doc = _doc()
-    assert len(doc.sections) >= 1
-    assert sum(len(s.paragraphs) for s in doc.sections) > 0
+    assert len(doc.sections) == 1
+    # 220 direct ColumnSet>Paragraph children in this sample (table-cell paras excluded)
+    assert len(doc.sections[0].paragraphs) == 220
 
 
-def test_paragraph_text_nonempty_somewhere():
+def test_paragraphs_have_multiple_runs_and_real_text():
     doc = _doc()
-    all_text = "".join(r.text for s in doc.sections
-                       for p in s.paragraphs for r in p.runs)
+    paras = doc.sections[0].paragraphs
+    # at least one paragraph is split into multiple Text runs
+    assert any(len(p.runs) >= 2 for p in paras)
+    all_text = "".join(r.text for p in paras for r in p.runs)
     assert all_text.strip() != ""
+    # runs carry a real charshape-id reference
+    a_run = next(r for p in paras for r in p.runs)
+    assert a_run.char_shape_id >= 0
 
 
 def test_docinfo_attached():
     doc = _doc()
-    assert len(doc.docinfo.fonts) > 0
+    assert len(doc.docinfo.fonts) == 65
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1182,6 +1234,7 @@ class HwpRun:
 @dataclass
 class HwpParagraph:
     para_shape_id: int
+    style_id: int = 0
     runs: list = field(default_factory=list)
 
 
@@ -1202,38 +1255,34 @@ class HwpDocument:
 from .model import HwpRun, HwpParagraph, HwpSection, HwpDocument
 
 
-def _para_text(para_el):
-    """Concatenate text from a paragraph's text element(s)."""
-    parts = []
-    for t in para_el.iter("ParaText"):
-        if t.text:
-            parts.append(t.text)
-        for child in t:
-            if child.text:
-                parts.append(child.text)
-    return "".join(parts)
+def _paragraph_runs(para_el):
+    """One run per <Text> directly under the paragraph's LineSegs (skips
+    ControlChars and any table-cell text nested deeper)."""
+    runs = []
+    for text_el in para_el.findall("LineSeg/Text"):
+        content = text_el.text or ""
+        if content:
+            runs.append(HwpRun(
+                char_shape_id=_int(text_el.get("charshape-id")),
+                text=content,
+            ))
+    return runs
 
 
 def read_document(xml_bytes):
     docinfo = read_docinfo(xml_bytes)
     root = etree.fromstring(xml_bytes)
     sections = []
-    # pyhwp groups body content under Section elements; fall back to a single
-    # section wrapping all paragraphs if the dump is flat.
-    section_els = list(root.iter("Section")) or [root]
-    for sec_el in section_els:
+    for sec_el in root.findall(".//SectionDef"):
         paras = []
-        for para_el in sec_el.iter("Paragraph"):
-            shape_id = _int_attr(para_el, "para_shape_id", "parashape_id")
-            text = _para_text(para_el)
-            first_cs = 0
-            cs_el = para_el.find(".//ParaCharShape")
-            if cs_el is not None:
-                first_cs = _int_attr(cs_el, "charshape_id", "char_shape_id")
-            runs = [HwpRun(char_shape_id=first_cs, text=text)] if text else []
-            paras.append(HwpParagraph(para_shape_id=shape_id, runs=runs))
-        if paras:
-            sections.append(HwpSection(paragraphs=paras))
+        for col in sec_el.findall("ColumnSet"):
+            for para_el in col.findall("Paragraph"):
+                paras.append(HwpParagraph(
+                    para_shape_id=_int(para_el.get("parashape-id")),
+                    style_id=_int(para_el.get("style-id")),
+                    runs=_paragraph_runs(para_el),
+                ))
+        sections.append(HwpSection(paragraphs=paras))
     if not sections:
         sections = [HwpSection(paragraphs=[])]
     return HwpDocument(docinfo=docinfo, sections=sections)
@@ -1242,7 +1291,7 @@ def read_document(xml_bytes):
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `.venv/bin/pytest tests/test_reader_body.py -v`
-Expected: PASS. Adjust `Section`/`Paragraph`/`ParaText`/`ParaCharShape` literals to match the Task 8 fixture if needed.
+Expected: PASS (3 tests).
 
 - [ ] **Step 6: Commit**
 
@@ -1317,24 +1366,19 @@ git commit -m "feat: mapper for fonts -> fontface"
 
 **Interfaces:**
 - Consumes: `hwpmodel.model.HwpCharShape`.
-- Produces: `hwp2hwpx.mapper.char_pr.map_char_shapes(shapes: list[HwpCharShape]) -> list[owpml.model.CharPr]`, and `hwp2hwpx.mapper.char_pr.color_to_hex(color_int: int) -> str` (HWP stores BGR int; return `#RRGGBB`).
+- Produces: `hwp2hwpx.mapper.char_pr.map_char_shapes(shapes: list[HwpCharShape]) -> list[owpml.model.CharPr]`.
+
+**GROUND TRUTH:** `HwpCharShape.text_color` is already a `#RRGGBB` string (pyhwp emits it that way — see Task 9); pass it straight through. No BGR-int conversion needed. `font_id` is already the resolved global FaceName index from Task 9.
 
 - [ ] **Step 1: Write failing test `tests/test_mapper_charpr.py`**
 
 ```python
-from hwp2hwpx.mapper.char_pr import map_char_shapes, color_to_hex
+from hwp2hwpx.mapper.char_pr import map_char_shapes
 from hwp2hwpx.hwpmodel.model import HwpCharShape
 
 
-def test_color_bgr_to_hex():
-    # HWP stores color as 0x00BBGGRR; pure red (R=255) => #FF0000
-    assert color_to_hex(0x0000FF) == "#FF0000"
-    assert color_to_hex(0xFF0000) == "#0000FF"
-    assert color_to_hex(0) == "#000000"
-
-
 def test_map_char_shape_fields():
-    src = [HwpCharShape(index=0, base_size=1400, color=0x0000FF, font_id=3,
+    src = [HwpCharShape(index=0, base_size=1400, text_color="#FF0000", font_id=3,
                         bold=True, italic=False)]
     out = map_char_shapes(src)
     assert out[0].id == 0
@@ -1342,6 +1386,15 @@ def test_map_char_shape_fields():
     assert out[0].text_color == "#FF0000"
     assert out[0].font_ref_id == 3
     assert out[0].bold is True
+    assert out[0].italic is False
+
+
+def test_map_preserves_order_and_count():
+    src = [HwpCharShape(index=0, base_size=1000, text_color="#000000"),
+           HwpCharShape(index=1, base_size=1200, text_color="#112233")]
+    out = map_char_shapes(src)
+    assert [c.id for c in out] == [0, 1]
+    assert [c.text_color for c in out] == ["#000000", "#112233"]
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1356,21 +1409,13 @@ Expected: FAIL with `ModuleNotFoundError`.
 from ..owpml.model import CharPr
 
 
-def color_to_hex(color_int):
-    """HWP stores color as 0x00BBGGRR. Convert to #RRGGBB."""
-    r = color_int & 0xFF
-    g = (color_int >> 8) & 0xFF
-    b = (color_int >> 16) & 0xFF
-    return "#%02X%02X%02X" % (r, g, b)
-
-
 def map_char_shapes(shapes):
     out = []
     for cs in shapes:
         out.append(CharPr(
             id=cs.index,
             height=cs.base_size,
-            text_color=color_to_hex(cs.color),
+            text_color=cs.text_color,
             font_ref_id=cs.font_id,
             bold=cs.bold,
             italic=cs.italic,
@@ -1454,7 +1499,7 @@ git commit -m "feat: mapper for para shape -> paraPr"
 
 **Interfaces:**
 - Consumes: `hwpmodel.model.HwpDocument`, `map_fonts`, `map_char_shapes`, `map_para_shapes`.
-- Produces: `hwp2hwpx.mapper.body.map_document(hwp_doc: HwpDocument, title: str = "") -> owpml.model.OwpmlDocument`. Builds Header from docinfo; maps each HwpSection→Section, HwpParagraph→Para (para_pr_id = para_shape_id), HwpRun→Run (char_pr_id = char_shape_id) with a single Text.
+- Produces: `hwp2hwpx.mapper.body.map_document(hwp_doc: HwpDocument, title: str = "") -> owpml.model.OwpmlDocument`. Builds Header from docinfo; maps each HwpSection→Section, HwpParagraph→Para (para_pr_id = para_shape_id, style_id = style_id), HwpRun→Run (char_pr_id = char_shape_id) with a single Text.
 
 - [ ] **Step 1: Write failing test `tests/test_mapper_body.py`**
 
@@ -1473,7 +1518,8 @@ def _hwp_doc():
         para_shapes=[HwpParaShape(index=0, align="CENTER")],
     )
     sec = HwpSection(paragraphs=[
-        HwpParagraph(para_shape_id=0, runs=[HwpRun(char_shape_id=0, text="가나다")])
+        HwpParagraph(para_shape_id=0, style_id=5,
+                     runs=[HwpRun(char_shape_id=0, text="가나다")])
     ])
     return HwpDocument(docinfo=di, sections=[sec])
 
@@ -1486,6 +1532,7 @@ def test_map_document_builds_owpml():
     assert len(doc.header.para_prs) == 1
     para = doc.sections[0].paras[0]
     assert para.para_pr_id == 0
+    assert para.style_id == 5
     assert para.runs[0].char_pr_id == 0
     assert para.runs[0].texts[0].content == "가나다"
 ```
@@ -1521,7 +1568,8 @@ def map_document(hwp_doc, title=""):
         for hpar in hsec.paragraphs:
             runs = [Run(char_pr_id=r.char_shape_id, texts=[Text(r.text)])
                     for r in hpar.runs]
-            paras.append(Para(id=para_id, para_pr_id=hpar.para_shape_id, runs=runs))
+            paras.append(Para(id=para_id, para_pr_id=hpar.para_shape_id,
+                              style_id=hpar.style_id, runs=runs))
             para_id += 1
         sections.append(Section(paras=paras))
     return OwpmlDocument(header=header, sections=sections,
