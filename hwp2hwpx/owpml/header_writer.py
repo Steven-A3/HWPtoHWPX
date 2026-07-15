@@ -9,6 +9,10 @@ def _hh(tag):
     return "{%s}%s" % (NS["hh"], tag)
 
 
+def _hc(tag):
+    return "{%s}%s" % (NS["hc"], tag)
+
+
 def header_xml(header, sec_cnt=1):
     root = etree.Element(_hh("head"), nsmap=_NSMAP)
     root.set("version", "1.5")
@@ -26,6 +30,36 @@ def header_xml(header, sec_cnt=1):
             fe.set("face", f.face)
             fe.set("type", f.type)
             fe.set("isEmbedded", "1" if f.is_embedded else "0")
+
+    bfs_el = etree.SubElement(ref, _hh("borderFills"))
+    bfs_el.set("itemCnt", str(len(header.border_fills)))
+    for bf in header.border_fills:
+        be = etree.SubElement(bfs_el, _hh("borderFill"))
+        be.set("id", str(bf.id))
+        be.set("threeD", "0")
+        be.set("shadow", "0")
+        be.set("centerLine", "NONE")
+        be.set("breakCellSeparateLine", "0")
+        for slash in ("slash", "backSlash"):
+            se = etree.SubElement(be, _hh(slash))
+            se.set("type", "NONE")
+            se.set("Crooked", "0")
+            se.set("isCounter", "0")
+        by_kind = {b.kind: b for b in bf.borders}
+        for kind, tag in (("left", "leftBorder"), ("right", "rightBorder"),
+                          ("top", "topBorder"), ("bottom", "bottomBorder"),
+                          ("diagonal", "diagonal")):
+            b = by_kind.get(kind)
+            el = etree.SubElement(be, _hh(tag))
+            el.set("type", b.type if b else "NONE")
+            el.set("width", b.width if b else "0.1 mm")
+            el.set("color", b.color if b else "#000000")
+        if bf.fill_color:
+            fb = etree.SubElement(be, _hc("fillBrush"))
+            wb = etree.SubElement(fb, _hc("winBrush"))
+            wb.set("faceColor", bf.fill_color)
+            wb.set("hatchColor", "#FF000000")
+            wb.set("alpha", "0")
 
     cps = etree.SubElement(ref, _hh("charProperties"))
     cps.set("itemCnt", str(len(header.char_prs)))
