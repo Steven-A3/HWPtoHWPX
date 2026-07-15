@@ -101,18 +101,61 @@ def read_docinfo(xml_bytes):
                       border_fills=_parse_border_fills(id_mappings))
 
 
-def _paragraph_runs(para_el):
-    """One run per <Text> directly under the paragraph's LineSegs (skips
-    ControlChars and any table-cell text nested deeper)."""
-    runs = []
-    for text_el in para_el.findall("LineSeg/Text"):
-        content = text_el.text or ""
-        if content:
-            runs.append(HwpRun(
-                char_shape_id=_int(text_el.get("charshape-id")),
-                text=content,
+def _parse_table(tc_el):
+    body = tc_el.find("TableBody")
+    if body is None:
+        return HwpTable()
+    rows = []
+    for row_el in body.findall("TableRow"):
+        cells = []
+        for cell_el in row_el.findall("TableCell"):
+            cells.append(HwpTableCell(
+                col=_int(cell_el.get("col")),
+                row=_int(cell_el.get("row")),
+                col_span=_int(cell_el.get("colspan"), 1),
+                row_span=_int(cell_el.get("rowspan"), 1),
+                width=_int(cell_el.get("width")),
+                height=_int(cell_el.get("height")),
+                border_fill_id=_int(cell_el.get("borderfill-id")),
+                valign=cell_el.get("valign") or "middle",
+                paragraphs=[parse_paragraph(p) for p in cell_el.findall("Paragraph")],
             ))
-    return runs
+        rows.append(HwpTableRow(cells=cells))
+    width = sum(c.width for c in rows[0].cells) if rows else 0
+    return HwpTable(
+        rows=_int(body.get("rows")),
+        cols=_int(body.get("cols")),
+        cell_spacing=_int(body.get("cellspacing")),
+        border_fill_id=_int(body.get("borderfill-id")),
+        width=width,
+        height=_int(tc_el.get("height")),
+        table_rows=rows,
+    )
+
+
+def parse_paragraph(para_el):
+    """Build one HwpParagraph, walking LineSeg children in reading order:
+    Text -> text run; TableControl -> table run; other controls skipped."""
+    runs = []
+    for child in para_el.findall("LineSeg/*"):
+        if child.tag == "Text":
+            content = child.text or ""
+            if content:
+                runs.append(HwpRun(
+                    char_shape_id=_int(child.get("charshape-id")),
+                    text=content,
+                ))
+        elif child.tag == "TableControl":
+            runs.append(HwpRun(
+                char_shape_id=_int(child.get("charshape-id")),
+                text="",
+                table=_parse_table(child),
+            ))
+    return HwpParagraph(
+        para_shape_id=_int(para_el.get("parashape-id")),
+        style_id=_int(para_el.get("style-id")),
+        runs=runs,
+    )
 
 
 def read_document(xml_bytes):
@@ -123,11 +166,7 @@ def read_document(xml_bytes):
         paras = []
         for col in sec_el.findall("ColumnSet"):
             for para_el in col.findall("Paragraph"):
-                paras.append(HwpParagraph(
-                    para_shape_id=_int(para_el.get("parashape-id")),
-                    style_id=_int(para_el.get("style-id")),
-                    runs=_paragraph_runs(para_el),
-                ))
+                paras.append(parse_paragraph(para_el))
         sections.append(HwpSection(paragraphs=paras))
     if not sections:
         sections = [HwpSection(paragraphs=[])]
