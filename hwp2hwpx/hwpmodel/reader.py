@@ -37,6 +37,15 @@ def _int(v, default=0):
         return default
 
 
+def _border_fill_id(v):
+    """HWP5's borderfill-id is 1-based (ID 1 == the first <BorderFill> in
+    IdMappings); our HwpBorderFill.index / OWPML BorderFill.id are 0-based
+    document-order indices. Shift present values down by one so refs line
+    up with definitions; a missing attribute falls back to the first entry."""
+    n = _int(v, 0)
+    return n - 1 if n > 0 else 0
+
+
 def _font_group_offsets(id_mappings):
     """Global start index of each language group within the flat FaceName list."""
     offsets = {}
@@ -116,7 +125,7 @@ def _parse_table(tc_el):
                 row_span=_int(cell_el.get("rowspan"), 1),
                 width=_int(cell_el.get("width")),
                 height=_int(cell_el.get("height")),
-                border_fill_id=_int(cell_el.get("borderfill-id")),
+                border_fill_id=_border_fill_id(cell_el.get("borderfill-id")),
                 valign=cell_el.get("valign") or "middle",
                 paragraphs=[parse_paragraph(p) for p in cell_el.findall("Paragraph")],
             ))
@@ -126,7 +135,7 @@ def _parse_table(tc_el):
         rows=_int(body.get("rows")),
         cols=_int(body.get("cols")),
         cell_spacing=_int(body.get("cellspacing")),
-        border_fill_id=_int(body.get("borderfill-id")),
+        border_fill_id=_border_fill_id(body.get("borderfill-id")),
         width=width,
         height=_int(tc_el.get("height")),
         table_rows=rows,
