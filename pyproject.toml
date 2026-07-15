@@ -1,0 +1,21 @@
+[project]
+name = "hwp2hwpx"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["lxml>=5", "pyhwp>=0.1b15"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+hwp2hwpx = "hwp2hwpx.cli:entrypoint"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["hwp2hwpx"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
