@@ -6,6 +6,7 @@ from lxml import etree
 from .model import (
     HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
     HwpRun, HwpParagraph, HwpSection, HwpDocument,
+    HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
 )
 
 _ALIGN_MAP = {
@@ -46,6 +47,27 @@ def _font_group_offsets(id_mappings):
     return offsets
 
 
+def _parse_border_fills(id_mappings):
+    out = []
+    for i, bf_el in enumerate(id_mappings.findall("BorderFill")):
+        borders = []
+        for b in bf_el.findall("Border"):
+            borders.append(HwpBorder(
+                kind=b.get("attribute-name") or "",
+                stroke_type=b.get("stroke-type") or "none",
+                width=b.get("width") or "0.1mm",
+                color=b.get("color") or "#000000",
+            ))
+        fcp = bf_el.find("FillColorPattern")
+        fill_color = None
+        if fcp is not None:
+            bg = fcp.get("background-color")
+            if bg and bg.lower() != "none":
+                fill_color = bg
+        out.append(HwpBorderFill(index=i, borders=borders, fill_color=fill_color))
+    return out
+
+
 def read_docinfo(xml_bytes):
     root = etree.fromstring(xml_bytes)
     id_mappings = root.find(".//IdMappings")
@@ -74,7 +96,9 @@ def read_docinfo(xml_bytes):
         raw = (el.get("align") or "left").lower()
         para_shapes.append(HwpParaShape(index=i, align=_ALIGN_MAP.get(raw, "LEFT")))
 
-    return HwpDocInfo(fonts=fonts, char_shapes=char_shapes, para_shapes=para_shapes)
+    return HwpDocInfo(fonts=fonts, char_shapes=char_shapes,
+                      para_shapes=para_shapes,
+                      border_fills=_parse_border_fills(id_mappings))
 
 
 def _paragraph_runs(para_el):
