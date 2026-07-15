@@ -2,7 +2,7 @@
 name = "hwp2hwpx"
 version = "0.1.0"
 requires-python = ">=3.9"
-dependencies = ["lxml>=5", "pyhwp>=0.1b15"]
+dependencies = ["lxml>=5", "pyhwp>=0.1b15", "six"]  # six: pyhwp's undeclared runtime dep (hwp5proc)
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
