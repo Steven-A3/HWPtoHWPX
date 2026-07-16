@@ -25,9 +25,9 @@ LINE_GSO = '''
   </ShapeComponent>
 </GShapeObjectControl>'''
 
-PIC_GSO = '''
+RECT_GSO = '''
 <GShapeObjectControl chid="gso " instance-id="5" z-order="1">
-  <ShapeComponent chid="$pic" chid0="$pic" width="10" height="10"
+  <ShapeComponent chid="$rec" chid0="$rec" width="10" height="10"
     initial-width="10" initial-height="10"/>
 </GShapeObjectControl>'''
 
@@ -48,7 +48,7 @@ def test_parse_line_drawing():
 
 
 def test_non_line_component_yields_none():
-    assert _parse_drawing(etree.fromstring(PIC_GSO)) is None
+    assert _parse_drawing(etree.fromstring(RECT_GSO)) is None
 
 
 def test_parse_paragraph_puts_drawing_in_its_own_run():

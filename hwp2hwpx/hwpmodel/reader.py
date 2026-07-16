@@ -9,7 +9,7 @@ from .model import (
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
     HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
     HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
-    HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing,
+    HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing, HwpPicture,
 )
 
 _ALIGN_MAP = {
@@ -336,17 +336,45 @@ def _parse_line_shape(comp_el):
     )
 
 
+def _parse_picture(comp_el):
+    sp = comp_el.find("ShapePicture")
+    if sp is None:
+        return None
+    rect = sp.find("ImageRect")
+    pts = [(0, 0), (0, 0), (0, 0), (0, 0)]
+    if rect is not None:
+        for i in range(4):
+            c = rect.find("Coord[@attribute-name='p%d']" % i)
+            if c is not None:
+                pts[i] = (_int(c.get("x")), _int(c.get("y")))
+    clip = sp.find("ImageClip")
+    img_clip = ((_int(clip.get("left")), _int(clip.get("right")),
+                 _int(clip.get("top")), _int(clip.get("bottom")))
+                if clip is not None else (0, 0, 0, 0))
+    info = sp.find("PictureInfo")
+    return HwpPicture(
+        instance_id=_int(sp.get("instance-id")),
+        bindata_id=_int(info.get("bindata-id")) if info is not None else 0,
+        img_rect=pts,
+        img_clip=img_clip,
+        brightness=_int(info.get("brightness")) if info is not None else 0,
+        contrast=_int(info.get("contrast")) if info is not None else 0,
+        effect=_int(info.get("effect")) if info is not None else 0,
+        dim_width=_int(comp_el.get("initial-width")),
+        dim_height=_int(comp_el.get("initial-height")),
+    )
+
+
 def _parse_drawing(gso_el):
-    """GShapeObjectControl -> HwpDrawing. Slice A: only line ($lin) components;
-    other kinds ($pic, $rec, ...) return None (skipped until Slice B)."""
+    """GShapeObjectControl -> HwpDrawing. Slice A+B: line ($lin) and picture
+    ($pic); other kinds return None (skipped)."""
     comp = gso_el.find("ShapeComponent")
     if comp is None:
         return None
     chid0 = (comp.get("chid0") or comp.get("chid") or "").strip()
-    if chid0 != "$lin":
+    if chid0 not in ("$lin", "$pic"):
         return None
-    return HwpDrawing(
-        kind="line",
+    common = dict(
         instance_id=_int(gso_el.get("instance-id")),
         z_order=_int(gso_el.get("z-order")),
         flow=gso_el.get("flow") or "block",
@@ -367,8 +395,10 @@ def _parse_drawing(gso_el):
         width_relto=gso_el.get("width-relto") or "absolute",
         height_relto=gso_el.get("height-relto") or "absolute",
         component=_parse_shape_component(comp),
-        line=_parse_line_shape(comp),
     )
+    if chid0 == "$lin":
+        return HwpDrawing(kind="line", line=_parse_line_shape(comp), **common)
+    return HwpDrawing(kind="pic", picture=_parse_picture(comp), **common)
 
 
 def parse_paragraph(para_el):
