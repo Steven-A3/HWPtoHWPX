@@ -167,6 +167,40 @@ def parse_paragraph(para_el):
     )
 
 
+def _clamp_table_border_fill_ids(sections, border_fill_count):
+    """`_border_fill_id` only guards the low end (raw 0/missing -> 0); a raw
+    id past the last defined BorderFill would still dangle. Clamp every
+    table/cell border_fill_id into [0, border_fill_count - 1] here, once the
+    definition count is known, by walking the already-parsed section tree
+    (including nested tables inside cell paragraphs)."""
+    if border_fill_count <= 0:
+        return
+    last = border_fill_count - 1
+
+    def _clamp(n):
+        if n < 0:
+            return 0
+        if n > last:
+            return last
+        return n
+
+    def _walk_table(table):
+        table.border_fill_id = _clamp(table.border_fill_id)
+        for row in table.table_rows:
+            for cell in row.cells:
+                cell.border_fill_id = _clamp(cell.border_fill_id)
+                _walk_paragraphs(cell.paragraphs)
+
+    def _walk_paragraphs(paragraphs):
+        for para in paragraphs:
+            for run in para.runs:
+                if run.table is not None:
+                    _walk_table(run.table)
+
+    for sec in sections:
+        _walk_paragraphs(sec.paragraphs)
+
+
 def read_document(xml_bytes):
     docinfo = read_docinfo(xml_bytes)
     root = etree.fromstring(xml_bytes)
@@ -179,4 +213,5 @@ def read_document(xml_bytes):
         sections.append(HwpSection(paragraphs=paras))
     if not sections:
         sections = [HwpSection(paragraphs=[])]
+    _clamp_table_border_fill_ids(sections, len(docinfo.border_fills))
     return HwpDocument(docinfo=docinfo, sections=sections)
