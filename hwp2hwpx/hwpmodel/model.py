@@ -47,6 +47,7 @@ class HwpParaShape:
     line_spacing_type: str = "ratio"
     border_fill_id: int = 1
     level: int = 0
+    tab_def_id: int = 0
 
 
 @dataclass
@@ -62,12 +63,28 @@ class HwpStyle:
 
 
 @dataclass
+class HwpTab:
+    pos: int = 0
+    kind: str = "left"
+    fill_type: int = 0
+
+
+@dataclass
+class HwpTabDef:
+    index: int
+    auto_tab_left: int = 0
+    auto_tab_right: int = 0
+    tabs: list = field(default_factory=list)
+
+
+@dataclass
 class HwpDocInfo:
     fonts: list = field(default_factory=list)
     char_shapes: list = field(default_factory=list)
     para_shapes: list = field(default_factory=list)
     border_fills: list = field(default_factory=list)
     styles: list = field(default_factory=list)
+    tab_defs: list = field(default_factory=list)
 
 
 @dataclass
