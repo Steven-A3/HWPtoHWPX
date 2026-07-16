@@ -68,6 +68,21 @@ class Style:
 
 
 @dataclass
+class TabItem:
+    pos: int = 0
+    type: str = "LEFT"
+    leader: str = "NONE"
+
+
+@dataclass
+class TabDef:
+    id: int
+    auto_tab_left: int = 0
+    auto_tab_right: int = 0
+    tabs: list = field(default_factory=list)
+
+
+@dataclass
 class Text:
     content: str
 
@@ -94,6 +109,7 @@ class Header:
     para_prs: list = field(default_factory=list)
     border_fills: list = field(default_factory=list)
     styles: list = field(default_factory=list)
+    tab_defs: list = field(default_factory=list)
 
 
 @dataclass

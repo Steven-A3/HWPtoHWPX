@@ -128,11 +128,34 @@ def header_xml(header, sec_cnt=1):
         sh.set("offsetY", str(cp.shadow_offset_y))
 
     tabs_el = etree.SubElement(ref, _hh("tabProperties"))
-    tabs_el.set("itemCnt", "1")
-    tab_el = etree.SubElement(tabs_el, _hh("tabPr"))
-    tab_el.set("id", "0")
-    tab_el.set("autoTabLeft", "0")
-    tab_el.set("autoTabRight", "0")
+    if header.tab_defs:
+        tabs_el.set("itemCnt", str(len(header.tab_defs)))
+        for td in header.tab_defs:
+            tpe = etree.SubElement(tabs_el, _hh("tabPr"))
+            tpe.set("id", str(td.id))
+            tpe.set("autoTabLeft", str(td.auto_tab_left))
+            tpe.set("autoTabRight", str(td.auto_tab_right))
+            for item in td.tabs:
+                sw = etree.SubElement(tpe, _hp("switch"))
+                case = etree.SubElement(sw, _hp("case"))
+                case.set("{%s}required-namespace" % NS["hp"],
+                         "http://www.hancom.co.kr/hwpml/2016/HwpUnitChar")
+                ci = etree.SubElement(case, _hh("tabItem"))
+                ci.set("pos", str(item.pos // 2))
+                ci.set("type", item.type)
+                ci.set("leader", item.leader)
+                ci.set("unit", "HWPUNIT")
+                default = etree.SubElement(sw, _hp("default"))
+                di = etree.SubElement(default, _hh("tabItem"))
+                di.set("pos", str(item.pos))
+                di.set("type", item.type)
+                di.set("leader", item.leader)
+    else:
+        tabs_el.set("itemCnt", "1")
+        tab_el = etree.SubElement(tabs_el, _hh("tabPr"))
+        tab_el.set("id", "0")
+        tab_el.set("autoTabLeft", "0")
+        tab_el.set("autoTabRight", "0")
 
     pps = etree.SubElement(ref, _hh("paraProperties"))
     pps.set("itemCnt", str(len(header.para_prs)))

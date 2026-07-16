@@ -27,6 +27,6 @@ def map_para_shapes(shapes):
             line_spacing_type=_LS_TYPE.get((s.line_spacing_type or "ratio").lower(),
                                            "PERCENT"),
             border_fill_id=s.border_fill_id if s.border_fill_id >= 1 else 1,
-            tab_pr_id=0,
+            tab_pr_id=s.tab_def_id,
         ))
     return out

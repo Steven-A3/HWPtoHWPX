@@ -7,7 +7,7 @@ from .model import (
     HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
     HwpRun, HwpParagraph, HwpSection, HwpDocument,
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
-    HwpStyle,
+    HwpStyle, HwpTab, HwpTabDef,
 )
 
 _ALIGN_MAP = {
@@ -116,6 +116,27 @@ def _parse_styles(id_mappings):
     return out
 
 
+def _parse_tab_defs(id_mappings):
+    out = []
+    for i, el in enumerate(id_mappings.findall("TabDef")):
+        tabs = []
+        arr = el.find("Array")
+        if arr is not None:
+            for t in arr.findall("Tab"):
+                tabs.append(HwpTab(
+                    pos=_int(t.get("pos")),
+                    kind=(t.get("kind") or "left").lower(),
+                    fill_type=_int(t.get("fill-type")),
+                ))
+        out.append(HwpTabDef(
+            index=i,
+            auto_tab_left=_int(el.get("autotab-left")),
+            auto_tab_right=_int(el.get("autotab-right")),
+            tabs=tabs,
+        ))
+    return out
+
+
 def read_docinfo(xml_bytes):
     root = etree.fromstring(xml_bytes)
     id_mappings = root.find(".//IdMappings")
@@ -170,12 +191,14 @@ def read_docinfo(xml_bytes):
             line_spacing_type=el.get("linespacing-type") or "ratio",
             border_fill_id=_border_fill_id(el.get("borderfill-id")),
             level=_int(el.get("level")),
+            tab_def_id=_int(el.get("tabdef-id")),
         ))
 
     return HwpDocInfo(fonts=fonts, char_shapes=char_shapes,
                       para_shapes=para_shapes,
                       border_fills=_parse_border_fills(id_mappings),
-                      styles=_parse_styles(id_mappings))
+                      styles=_parse_styles(id_mappings),
+                      tab_defs=_parse_tab_defs(id_mappings))
 
 
 def _parse_table(tc_el):
@@ -302,6 +325,12 @@ def _clamp_style_refs(styles, char_count, para_count):
         s.next_style_id = _clamp_index(s.next_style_id, style_count)
 
 
+def _clamp_para_shape_tab_def_ids(para_shapes, tab_def_count):
+    """Every paraPr tabPrIDRef must resolve to an emitted <hh:tabPr>."""
+    for ps in para_shapes:
+        ps.tab_def_id = _clamp_index(ps.tab_def_id, tab_def_count)
+
+
 def _clamp_paragraph_style_ids(sections, style_count):
     """Every paragraph styleIDRef must resolve to an emitted <hh:style>."""
     def _walk(paragraphs):
@@ -334,4 +363,5 @@ def read_document(xml_bytes):
     _clamp_style_refs(docinfo.styles, len(docinfo.char_shapes),
                       len(docinfo.para_shapes))
     _clamp_paragraph_style_ids(sections, len(docinfo.styles))
+    _clamp_para_shape_tab_def_ids(docinfo.para_shapes, len(docinfo.tab_defs))
     return HwpDocument(docinfo=docinfo, sections=sections)
