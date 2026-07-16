@@ -7,6 +7,7 @@ from .model import (
     HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
     HwpRun, HwpParagraph, HwpSection, HwpDocument,
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
+    HwpStyle,
 )
 
 _ALIGN_MAP = {
@@ -99,6 +100,22 @@ def _parse_border_fills(id_mappings):
     return out
 
 
+def _parse_styles(id_mappings):
+    out = []
+    for i, el in enumerate(id_mappings.findall("Style")):
+        out.append(HwpStyle(
+            index=i,
+            kind=(el.get("kind") or "paragraph").lower(),
+            local_name=el.get("local-name") or "",
+            eng_name=el.get("name") or "",
+            para_shape_id=_int(el.get("parashape-id")),
+            char_shape_id=_int(el.get("charshape-id")),
+            next_style_id=_int(el.get("next-style-id")),
+            lang_id=_int(el.get("lang-id"), 1042),
+        ))
+    return out
+
+
 def read_docinfo(xml_bytes):
     root = etree.fromstring(xml_bytes)
     id_mappings = root.find(".//IdMappings")
@@ -157,7 +174,8 @@ def read_docinfo(xml_bytes):
 
     return HwpDocInfo(fonts=fonts, char_shapes=char_shapes,
                       para_shapes=para_shapes,
-                      border_fills=_parse_border_fills(id_mappings))
+                      border_fills=_parse_border_fills(id_mappings),
+                      styles=_parse_styles(id_mappings))
 
 
 def _parse_table(tc_el):
@@ -263,6 +281,41 @@ def _clamp_para_shape_border_fill_ids(para_shapes, border_fill_count):
         ps.border_fill_id = _clamp_border_fill_id(ps.border_fill_id, border_fill_count)
 
 
+def _clamp_index(n, count):
+    """Clamp a 0-based ref into [0, count-1]; empty target -> 0."""
+    if count <= 0:
+        return 0
+    if n < 0:
+        return 0
+    if n >= count:
+        return count - 1
+    return n
+
+
+def _clamp_style_refs(styles, char_count, para_count):
+    """Style paraPrIDRef/charPrIDRef/nextStyleIDRef must resolve or they
+    dangle in header.xml. Clamp against the known definition counts."""
+    style_count = len(styles)
+    for s in styles:
+        s.char_shape_id = _clamp_index(s.char_shape_id, char_count)
+        s.para_shape_id = _clamp_index(s.para_shape_id, para_count)
+        s.next_style_id = _clamp_index(s.next_style_id, style_count)
+
+
+def _clamp_paragraph_style_ids(sections, style_count):
+    """Every paragraph styleIDRef must resolve to an emitted <hh:style>."""
+    def _walk(paragraphs):
+        for para in paragraphs:
+            para.style_id = _clamp_index(para.style_id, style_count)
+            for run in para.runs:
+                if run.table is not None:
+                    for row in run.table.table_rows:
+                        for cell in row.cells:
+                            _walk(cell.paragraphs)
+    for sec in sections:
+        _walk(sec.paragraphs)
+
+
 def read_document(xml_bytes):
     docinfo = read_docinfo(xml_bytes)
     root = etree.fromstring(xml_bytes)
@@ -278,4 +331,7 @@ def read_document(xml_bytes):
     border_fill_count = len(docinfo.border_fills)
     _clamp_table_border_fill_ids(sections, border_fill_count)
     _clamp_para_shape_border_fill_ids(docinfo.para_shapes, border_fill_count)
+    _clamp_style_refs(docinfo.styles, len(docinfo.char_shapes),
+                      len(docinfo.para_shapes))
+    _clamp_paragraph_style_ids(sections, len(docinfo.styles))
     return HwpDocument(docinfo=docinfo, sections=sections)
