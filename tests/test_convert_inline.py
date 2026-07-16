@@ -1,5 +1,4 @@
 import zipfile
-import re
 from hwp2hwpx.convert import convert
 
 SAMPLE_HWP = "samples/3.과업지시서_070.hwp"
