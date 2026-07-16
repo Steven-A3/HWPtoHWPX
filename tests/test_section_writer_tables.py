@@ -53,3 +53,15 @@ def test_plain_paragraph_unchanged():
     p = root.find(_hp("p"))
     assert p.get("paraPrIDRef") == "1"
     assert p.find(_hp("run")).find(_hp("t")).text == "x"
+
+
+def test_paragraph_ids_unique_across_body_and_table_cells():
+    # A body paragraph plus a table whose cell also has a paragraph: both
+    # carry the caller-supplied local id 0, but the writer must assign
+    # document-unique hp:p/@id values across the whole section.
+    body_para = Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[Text("body")])])
+    section = _section_with_table()
+    section.paras.insert(0, body_para)
+    root = etree.fromstring(section_xml(section))
+    ids = [p.get("id") for p in root.iter(_hp("p"))]
+    assert len(ids) == len(set(ids)), "duplicate hp:p/@id values: %r" % ids

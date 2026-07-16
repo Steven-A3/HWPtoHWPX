@@ -25,7 +25,8 @@ def _write_run(p_el, run, state):
 
 def _write_paragraph(parent_el, para, state):
     p = etree.SubElement(parent_el, _hp("p"))
-    p.set("id", str(para.id))
+    p.set("id", str(state["para_id"]))
+    state["para_id"] += 1
     p.set("paraPrIDRef", str(para.para_pr_id))
     p.set("styleIDRef", str(para.style_id))
     p.set("pageBreak", "0")
@@ -105,7 +106,7 @@ def _write_cell(tr_el, cell, state):
 
 def section_xml(section):
     root = etree.Element(_hs("sec"), nsmap=_NSMAP)
-    state = {"tbl_id": 0}
+    state = {"tbl_id": 0, "para_id": 0}
     for para in section.paras:
         _write_paragraph(root, para, state)
     return XML_DECL + etree.tostring(root, encoding="UTF-8")
