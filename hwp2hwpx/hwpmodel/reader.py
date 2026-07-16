@@ -4,7 +4,7 @@ import sys
 import subprocess
 from lxml import etree
 from .model import (
-    HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
+    HwpFont, HwpPanose, HwpCharShape, HwpParaShape, HwpDocInfo,
     HwpRun, HwpControl, HwpParagraph, HwpSection, HwpDocument,
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
     HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
@@ -44,6 +44,23 @@ def _border_fill_id(v):
     missing/<1 value falls back to the first definition (id 1)."""
     n = _int(v, 0)
     return n if n >= 1 else 1
+
+
+def _parse_panose(face_el):
+    p = face_el.find("Panose1")
+    if p is None:
+        return None
+    return HwpPanose(
+        family_type=_int(p.get("family-type")),
+        weight=_int(p.get("weight")),
+        proportion=_int(p.get("proportion")),
+        contrast=_int(p.get("contrast")),
+        stroke_variation=_int(p.get("stroke-variation")),
+        arm_style=_int(p.get("arm-style")),
+        letterform=_int(p.get("letterform")),
+        midline=_int(p.get("midline")),
+        x_height=_int(p.get("x-height")),
+    )
 
 
 def _font_group_offsets(id_mappings):
@@ -144,7 +161,8 @@ def read_docinfo(xml_bytes):
         return HwpDocInfo()
     offsets = _font_group_offsets(id_mappings)
 
-    fonts = [HwpFont(index=i, name=el.get("name") or "")
+    fonts = [HwpFont(index=i, name=el.get("name") or "",
+                     panose=_parse_panose(el))
              for i, el in enumerate(id_mappings.findall("FaceName"))]
 
     char_shapes = []
@@ -233,7 +251,7 @@ def _parse_table(tc_el):
     )
 
 
-_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak"}
+_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak", "TAB": "tab"}
 
 
 def _hex_int(v):

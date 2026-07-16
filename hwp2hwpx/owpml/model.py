@@ -3,11 +3,25 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class TypeInfo:
+    family_type: str = "FCAT_GOTHIC"
+    weight: int = 0
+    proportion: int = 0
+    contrast: int = 0
+    stroke_variation: int = 0
+    arm_style: int = 0
+    letterform: int = 0
+    midline: int = 0
+    x_height: int = 0
+
+
+@dataclass
 class Font:
     id: int
     face: str
     type: str = "TTF"
     is_embedded: bool = False
+    type_info: "TypeInfo" = None
 
 
 @dataclass

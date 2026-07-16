@@ -3,9 +3,23 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class HwpPanose:
+    family_type: int = 0
+    weight: int = 0
+    proportion: int = 0
+    contrast: int = 0
+    stroke_variation: int = 0
+    arm_style: int = 0
+    letterform: int = 0
+    midline: int = 0
+    x_height: int = 0
+
+
+@dataclass
 class HwpFont:
     index: int
     name: str
+    panose: "HwpPanose" = None
 
 
 @dataclass
