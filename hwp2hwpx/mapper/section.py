@@ -2,7 +2,7 @@
 from ..owpml.model import (
     SecPr, Grid, StartNum, Visibility, LineNumberShape, PagePr, Margin,
     NotePr, AutoNumFormat, NoteLine, NoteSpacing, Numbering, Placement,
-    PageBorderFill, Offset, ColPr, PageNum,
+    PageBorderFill, PageBorderOffset, ColPr, PageNum,
 )
 
 _ORIENTATION = {"portrait": "WIDELY", "landscape": "NARROWLY"}
@@ -70,7 +70,7 @@ def map_section_def(sd):
             text_border="PAPER" if b.relative_to == "paper" else "PAGE",
             header_inside=b.include_header, footer_inside=b.include_footer,
             fill_area="PAPER" if b.fill == "paper" else "PAGE",
-            offset=Offset(left=b.margin_left, right=b.margin_right,
+            offset=PageBorderOffset(left=b.margin_left, right=b.margin_right,
                           top=b.margin_top, bottom=b.margin_bottom))
         for i, b in enumerate(sd.page_borders)
     ]

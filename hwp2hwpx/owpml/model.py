@@ -198,7 +198,7 @@ class NotePr:
 
 
 @dataclass
-class Offset:
+class PageBorderOffset:
     left: int = 0
     right: int = 0
     top: int = 0
@@ -213,7 +213,7 @@ class PageBorderFill:
     header_inside: int = 0
     footer_inside: int = 0
     fill_area: str = "PAPER"
-    offset: "Offset" = None
+    offset: "PageBorderOffset" = None
 
 
 @dataclass
@@ -285,6 +285,7 @@ class Run:
     char_pr_id: int
     texts: list = field(default_factory=list)
     table: "Table" = None
+    drawing: "Line" = None
 
 
 @dataclass
@@ -368,3 +369,145 @@ class Table:
     width: int = 0
     height: int = 0
     rows: list = field(default_factory=list)
+
+
+@dataclass
+class Offset:
+    x: int = 0
+    y: int = 0
+
+
+@dataclass
+class OrgSz:
+    width: int = 0
+    height: int = 0
+
+
+@dataclass
+class CurSz:
+    width: int = 0
+    height: int = 0
+
+
+@dataclass
+class Flip:
+    horizontal: int = 0
+    vertical: int = 0
+
+
+@dataclass
+class RotationInfo:
+    angle: int = 0
+    center_x: int = 0
+    center_y: int = 0
+    rotate_image: int = 0
+
+
+@dataclass
+class Matrix:
+    e1: str = "1"
+    e2: str = "0"
+    e3: str = "0"
+    e4: str = "0"
+    e5: str = "1"
+    e6: str = "0"
+
+
+@dataclass
+class RenderingInfo:
+    trans: "Matrix" = None
+    sca: "Matrix" = None
+    rot: "Matrix" = None
+
+
+@dataclass
+class LineShape:
+    color: str = "#000000"
+    width: int = 0
+    style: str = "SOLID"
+    end_cap: str = "FLAT"
+    head_style: str = "NORMAL"
+    tail_style: str = "NORMAL"
+    head_fill: int = 1
+    tail_fill: int = 1
+    head_sz: str = "SMALL_SMALL"
+    tail_sz: str = "SMALL_SMALL"
+    outline_style: str = "NORMAL"
+    alpha: int = 0
+
+
+@dataclass
+class WinBrush:
+    face_color: str = "#FFFFFF"
+    hatch_color: str = "#000000"
+    alpha: int = 0
+
+
+@dataclass
+class Shadow:
+    type: str = "NONE"
+    color: str = "#000000"
+    offset_x: int = 0
+    offset_y: int = 0
+    alpha: int = 0
+
+
+@dataclass
+class Pt:
+    x: int = 0
+    y: int = 0
+
+
+@dataclass
+class ShapeSz:
+    width: int = 0
+    width_rel_to: str = "ABSOLUTE"
+    height: int = 0
+    height_rel_to: str = "ABSOLUTE"
+    protect: int = 0
+
+
+@dataclass
+class ShapePos:
+    treat_as_char: int = 0
+    affect_lspacing: int = 0
+    flow_with_text: int = 1
+    allow_overlap: int = 0
+    hold_anchor_and_so: int = 0
+    vert_rel_to: str = "PAPER"
+    horz_rel_to: str = "PAPER"
+    vert_align: str = "TOP"
+    horz_align: str = "LEFT"
+    vert_offset: int = 0
+    horz_offset: int = 0
+
+
+@dataclass
+class ShapeOutMargin:
+    left: int = 0
+    right: int = 0
+    top: int = 0
+    bottom: int = 0
+
+
+@dataclass
+class Line:
+    id: int = 0
+    z_order: int = 0
+    text_wrap: str = "TOP_AND_BOTTOM"
+    text_flow: str = "BOTH_SIDES"
+    instid: int = 0
+    offset: "Offset" = None
+    org_sz: "OrgSz" = None
+    cur_sz: "CurSz" = None
+    flip: "Flip" = None
+    rotation_info: "RotationInfo" = None
+    rendering_info: "RenderingInfo" = None
+    line_shape: "LineShape" = None
+    win_brush: "WinBrush" = None
+    shadow: "Shadow" = None
+    start_pt: "Pt" = None
+    end_pt: "Pt" = None
+    sz: "ShapeSz" = None
+    pos: "ShapePos" = None
+    out_margin: "ShapeOutMargin" = None

@@ -3,7 +3,7 @@ from hwp2hwpx.owpml.section_writer import section_xml
 from hwp2hwpx.owpml.model import (
     Section, Para, Run, SecPr, Grid, StartNum, Visibility, LineNumberShape,
     PagePr, Margin, NotePr, AutoNumFormat, NoteLine, NoteSpacing, Numbering,
-    Placement, PageBorderFill, Offset, ColPr, PageNum,
+    Placement, PageBorderFill, PageBorderOffset, ColPr, PageNum,
 )
 
 HP = "http://www.hancom.co.kr/hwpml/2011/paragraph"
@@ -25,7 +25,7 @@ def _full_secpr():
         end_note_pr=NotePr(auto_num_format=AutoNumFormat(), note_line=NoteLine(),
                            note_spacing=NoteSpacing(), numbering=Numbering(),
                            placement=Placement(place="END_OF_DOCUMENT")),
-        page_border_fills=[PageBorderFill(type=t, offset=Offset(left=1417))
+        page_border_fills=[PageBorderFill(type=t, offset=PageBorderOffset(left=1417))
                            for t in ("BOTH", "EVEN", "ODD")],
         col_pr=ColPr(), page_num=PageNum(),
     )
