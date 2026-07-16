@@ -97,6 +97,167 @@ class TabDef:
 
 
 @dataclass
+class Grid:
+    line_grid: int = 0
+    char_grid: int = 0
+    wonggoji_format: int = 0
+
+
+@dataclass
+class StartNum:
+    page_starts_on: str = "BOTH"
+    page: int = 0
+    pic: int = 0
+    tbl: int = 0
+    equation: int = 0
+
+
+@dataclass
+class Visibility:
+    hide_first_header: int = 0
+    hide_first_footer: int = 0
+    hide_first_master_page: int = 0
+    border: str = "SHOW_ALL"
+    fill: str = "SHOW_ALL"
+    hide_first_page_num: int = 0
+    hide_first_empty_line: int = 0
+    show_line_number: int = 0
+
+
+@dataclass
+class LineNumberShape:
+    restart_type: int = 0
+    count_by: int = 0
+    distance: int = 0
+    start_number: int = 0
+
+
+@dataclass
+class Margin:
+    header: int = 0
+    footer: int = 0
+    gutter: int = 0
+    left: int = 0
+    right: int = 0
+    top: int = 0
+    bottom: int = 0
+
+
+@dataclass
+class PagePr:
+    landscape: str = "WIDELY"
+    width: int = 0
+    height: int = 0
+    gutter_type: str = "LEFT_ONLY"
+    margin: "Margin" = None
+
+
+@dataclass
+class AutoNumFormat:
+    type: str = "DIGIT"
+    user_char: str = ""
+    prefix_char: str = ""
+    suffix_char: str = ""
+    supscript: int = 0
+
+
+@dataclass
+class NoteLine:
+    length: int = 0
+    type: str = "SOLID"
+    width: str = "0.12 mm"
+    color: str = "#000000"
+
+
+@dataclass
+class NoteSpacing:
+    between_notes: int = 0
+    below_line: int = 0
+    above_line: int = 0
+
+
+@dataclass
+class Numbering:
+    type: str = "CONTINUOUS"
+    new_num: int = 1
+
+
+@dataclass
+class Placement:
+    place: str = "EACH_COLUMN"
+    beneath_text: int = 0
+
+
+@dataclass
+class NotePr:
+    auto_num_format: "AutoNumFormat" = None
+    note_line: "NoteLine" = None
+    note_spacing: "NoteSpacing" = None
+    numbering: "Numbering" = None
+    placement: "Placement" = None
+
+
+@dataclass
+class Offset:
+    left: int = 0
+    right: int = 0
+    top: int = 0
+    bottom: int = 0
+
+
+@dataclass
+class PageBorderFill:
+    type: str = "BOTH"
+    border_fill_id: int = 1
+    text_border: str = "PAPER"
+    header_inside: int = 0
+    footer_inside: int = 0
+    fill_area: str = "PAPER"
+    offset: "Offset" = None
+
+
+@dataclass
+class ColPr:
+    type: str = "NEWSPAPER"
+    layout: str = "LEFT"
+    col_count: int = 1
+    same_sz: int = 1
+    id: str = ""
+    same_gap: int = 0
+
+
+@dataclass
+class PageNum:
+    pos: str = "BOTTOM_CENTER"
+    format_type: str = "DIGIT"
+    side_char: str = "-"
+
+
+@dataclass
+class SecPr:
+    text_direction: str = "HORIZONTAL"
+    space_columns: int = 0
+    tab_stop: int = 0
+    outline_shape_id: int = 0
+    id: str = ""
+    tab_stop_val: int = 4000
+    tab_stop_unit: str = "HWPUNIT"
+    memo_shape_id: int = 0
+    text_vertical_width_head: int = 0
+    master_page_cnt: int = 0
+    grid: "Grid" = None
+    start_num: "StartNum" = None
+    visibility: "Visibility" = None
+    line_number_shape: "LineNumberShape" = None
+    page_pr: "PagePr" = None
+    foot_note_pr: "NotePr" = None
+    end_note_pr: "NotePr" = None
+    page_border_fills: list = field(default_factory=list)
+    col_pr: "ColPr" = None
+    page_num: "PageNum" = None
+
+
+@dataclass
 class Text:
     content: str
 
@@ -148,6 +309,7 @@ class Header:
 @dataclass
 class Section:
     paras: list = field(default_factory=list)
+    sec_pr: "SecPr" = None
 
 
 @dataclass
