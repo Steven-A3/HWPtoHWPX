@@ -7,6 +7,7 @@ from .char_pr import map_char_shapes
 from .para_pr import map_para_shapes
 from .border_fill import map_border_fills
 from .style import map_styles
+from .tab import map_tab_defs
 
 
 def map_paragraph(hpar, para_id):
@@ -35,6 +36,7 @@ def map_document(hwp_doc, title=""):
         para_prs=map_para_shapes(di.para_shapes),
         border_fills=map_border_fills(di.border_fills),
         styles=map_styles(di.styles),
+        tab_defs=map_tab_defs(di.tab_defs),
     )
     sections = []
     para_id = 0
