@@ -36,7 +36,123 @@ def _write_run(p_el, run, state):
         _write_table(r, run.table, state)
 
 
-def _write_paragraph(parent_el, para, state):
+def _write_sec_pr(run_el, sp):
+    s = etree.SubElement(run_el, _hp("secPr"))
+    for k, v in (("id", sp.id), ("textDirection", sp.text_direction),
+                 ("spaceColumns", str(sp.space_columns)),
+                 ("tabStop", str(sp.tab_stop)),
+                 ("tabStopVal", str(sp.tab_stop_val)),
+                 ("tabStopUnit", sp.tab_stop_unit),
+                 ("outlineShapeIDRef", str(sp.outline_shape_id)),
+                 ("memoShapeIDRef", str(sp.memo_shape_id)),
+                 ("textVerticalWidthHead", str(sp.text_vertical_width_head)),
+                 ("masterPageCnt", str(sp.master_page_cnt))):
+        s.set(k, v)
+
+    g = etree.SubElement(s, _hp("grid"))
+    g.set("lineGrid", str(sp.grid.line_grid))
+    g.set("charGrid", str(sp.grid.char_grid))
+    g.set("wonggojiFormat", str(sp.grid.wonggoji_format))
+
+    sn = etree.SubElement(s, _hp("startNum"))
+    sn.set("pageStartsOn", sp.start_num.page_starts_on)
+    for k, val in (("page", sp.start_num.page), ("pic", sp.start_num.pic),
+                   ("tbl", sp.start_num.tbl), ("equation", sp.start_num.equation)):
+        sn.set(k, str(val))
+
+    v = sp.visibility
+    vis = etree.SubElement(s, _hp("visibility"))
+    vis.set("hideFirstHeader", str(v.hide_first_header))
+    vis.set("hideFirstFooter", str(v.hide_first_footer))
+    vis.set("hideFirstMasterPage", str(v.hide_first_master_page))
+    vis.set("border", v.border)
+    vis.set("fill", v.fill)
+    vis.set("hideFirstPageNum", str(v.hide_first_page_num))
+    vis.set("hideFirstEmptyLine", str(v.hide_first_empty_line))
+    vis.set("showLineNumber", str(v.show_line_number))
+
+    ln = sp.line_number_shape
+    lns = etree.SubElement(s, _hp("lineNumberShape"))
+    lns.set("restartType", str(ln.restart_type))
+    lns.set("countBy", str(ln.count_by))
+    lns.set("distance", str(ln.distance))
+    lns.set("startNumber", str(ln.start_number))
+
+    if sp.page_pr is not None:
+        pp = etree.SubElement(s, _hp("pagePr"))
+        pp.set("landscape", sp.page_pr.landscape)
+        pp.set("width", str(sp.page_pr.width))
+        pp.set("height", str(sp.page_pr.height))
+        pp.set("gutterType", sp.page_pr.gutter_type)
+        mg = sp.page_pr.margin
+        m = etree.SubElement(pp, _hp("margin"))
+        for k, val in (("header", mg.header), ("footer", mg.footer),
+                       ("gutter", mg.gutter), ("left", mg.left),
+                       ("right", mg.right), ("top", mg.top), ("bottom", mg.bottom)):
+            m.set(k, str(val))
+
+    for tag, note in (("footNotePr", sp.foot_note_pr),
+                      ("endNotePr", sp.end_note_pr)):
+        if note is None:
+            continue
+        n = etree.SubElement(s, _hp(tag))
+        anf = etree.SubElement(n, _hp("autoNumFormat"))
+        anf.set("type", note.auto_num_format.type)
+        anf.set("userChar", note.auto_num_format.user_char)
+        anf.set("prefixChar", note.auto_num_format.prefix_char)
+        anf.set("suffixChar", note.auto_num_format.suffix_char)
+        anf.set("supscript", str(note.auto_num_format.supscript))
+        nl = etree.SubElement(n, _hp("noteLine"))
+        nl.set("length", str(note.note_line.length))
+        nl.set("type", note.note_line.type)
+        nl.set("width", note.note_line.width)
+        nl.set("color", note.note_line.color)
+        ns = etree.SubElement(n, _hp("noteSpacing"))
+        ns.set("betweenNotes", str(note.note_spacing.between_notes))
+        ns.set("belowLine", str(note.note_spacing.below_line))
+        ns.set("aboveLine", str(note.note_spacing.above_line))
+        nm = etree.SubElement(n, _hp("numbering"))
+        nm.set("type", note.numbering.type)
+        nm.set("newNum", str(note.numbering.new_num))
+        pl = etree.SubElement(n, _hp("placement"))
+        pl.set("place", note.placement.place)
+        pl.set("beneathText", str(note.placement.beneath_text))
+
+    for pbf in sp.page_border_fills:
+        b = etree.SubElement(s, _hp("pageBorderFill"))
+        b.set("type", pbf.type)
+        b.set("borderFillIDRef", str(pbf.border_fill_id))
+        b.set("textBorder", pbf.text_border)
+        b.set("headerInside", str(pbf.header_inside))
+        b.set("footerInside", str(pbf.footer_inside))
+        b.set("fillArea", pbf.fill_area)
+        o = etree.SubElement(b, _hp("offset"))
+        o.set("left", str(pbf.offset.left))
+        o.set("right", str(pbf.offset.right))
+        o.set("top", str(pbf.offset.top))
+        o.set("bottom", str(pbf.offset.bottom))
+
+
+def _write_ctrl_colpr(run_el, col_pr):
+    ctrl = etree.SubElement(run_el, _hp("ctrl"))
+    c = etree.SubElement(ctrl, _hp("colPr"))
+    c.set("id", col_pr.id)
+    c.set("type", col_pr.type)
+    c.set("layout", col_pr.layout)
+    c.set("colCount", str(col_pr.col_count))
+    c.set("sameSz", str(col_pr.same_sz))
+    c.set("sameGap", str(col_pr.same_gap))
+
+
+def _write_ctrl_pagenum(run_el, page_num):
+    ctrl = etree.SubElement(run_el, _hp("ctrl"))
+    pn = etree.SubElement(ctrl, _hp("pageNum"))
+    pn.set("pos", page_num.pos)
+    pn.set("formatType", page_num.format_type)
+    pn.set("sideChar", page_num.side_char)
+
+
+def _write_paragraph(parent_el, para, state, sec_pr=None):
     p = etree.SubElement(parent_el, _hp("p"))
     p.set("id", str(state["para_id"]))
     state["para_id"] += 1
@@ -45,6 +161,15 @@ def _write_paragraph(parent_el, para, state):
     p.set("pageBreak", "0")
     p.set("columnBreak", "0")
     p.set("merged", "0")
+    if sec_pr is not None:
+        cref = para.runs[0].char_pr_id if para.runs else 0
+        lead = etree.SubElement(p, _hp("run"))
+        lead.set("charPrIDRef", str(cref))
+        _write_sec_pr(lead, sec_pr)
+        if sec_pr.col_pr is not None:
+            _write_ctrl_colpr(lead, sec_pr.col_pr)
+        if sec_pr.page_num is not None:
+            _write_ctrl_pagenum(lead, sec_pr.page_num)
     for run in para.runs:
         _write_run(p, run, state)
     if para.line_segs:
@@ -133,6 +258,7 @@ def _write_cell(tr_el, cell, state):
 def section_xml(section):
     root = etree.Element(_hs("sec"), nsmap=_NSMAP)
     state = {"tbl_id": 0, "para_id": 0}
-    for para in section.paras:
-        _write_paragraph(root, para, state)
+    for idx, para in enumerate(section.paras):
+        _write_paragraph(root, para, state,
+                         sec_pr=(section.sec_pr if idx == 0 else None))
     return XML_DECL + etree.tostring(root, encoding="UTF-8")
