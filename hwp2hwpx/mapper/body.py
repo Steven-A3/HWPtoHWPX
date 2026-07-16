@@ -1,6 +1,6 @@
 """Map a whole HwpDocument to an OwpmlDocument."""
 from ..owpml.model import (
-    OwpmlDocument, Header, Section, Para, Run, Text, Metadata,
+    OwpmlDocument, Header, Section, Para, Run, Text, Metadata, Control,
 )
 from .fonts import map_fonts
 from .char_pr import map_char_shapes
@@ -8,6 +8,17 @@ from .para_pr import map_para_shapes
 from .border_fill import map_border_fills
 from .style import map_styles
 from .tab import map_tab_defs
+
+
+def _map_contents(contents):
+    """HwpRun.contents (str | HwpControl) -> OWPML Run.texts (Text | Control)."""
+    out = []
+    for item in contents:
+        if isinstance(item, str):
+            out.append(Text(item))
+        else:  # HwpControl
+            out.append(Control(item.kind))
+    return out
 
 
 def map_paragraph(hpar, para_id):
@@ -20,7 +31,8 @@ def map_paragraph(hpar, para_id):
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
                             table=map_table(r.table)))
         else:
-            runs.append(Run(char_pr_id=r.char_shape_id, texts=[Text(r.text)]))
+            runs.append(Run(char_pr_id=r.char_shape_id,
+                            texts=_map_contents(r.contents)))
     if not runs:
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]
