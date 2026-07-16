@@ -1,7 +1,8 @@
-"""Map an HWP line drawing (GShapeObjectControl) to an OWPML Line."""
+"""Map an HWP drawing (GShapeObjectControl) to an OWPML Line or Pic."""
 from ..owpml.model import (
     Line, Offset, OrgSz, CurSz, Flip, RotationInfo, Matrix, RenderingInfo,
     LineShape, WinBrush, Shadow, Pt, ShapeSz, ShapePos, ShapeOutMargin,
+    Pic, Img, ImgRect, ImgClip, InMargin, ImgDim, ShapeComment,
 )
 
 _TEXT_WRAP = {"front": "IN_FRONT_OF_TEXT", "back": "BEHIND_TEXT",
@@ -21,6 +22,7 @@ _HALIGN = {"left": "LEFT", "center": "CENTER", "right": "RIGHT",
            "inside": "INSIDE", "outside": "OUTSIDE"}
 _VALIGN = {"top": "TOP", "center": "CENTER", "bottom": "BOTTOM",
            "inside": "INSIDE", "outside": "OUTSIDE"}
+_PIC_EFFECT = {0: "REAL_PIC", 1: "GRAY_SCALE", 2: "BLACK_WHITE"}
 
 
 def _fmt(x):
@@ -35,12 +37,8 @@ def _matrix(vals):
                   e4=_fmt(b), e5=_fmt(d), e6=_fmt(f))
 
 
-def map_drawing(hd):
-    if hd is None or hd.kind != "line" or hd.component is None or hd.line is None:
-        return None
-    comp = hd.component
-    ls = hd.line
-    return Line(
+def _common_container(hd, comp, rotate_image):
+    return dict(
         id=hd.instance_id,
         z_order=hd.z_order,
         text_wrap=_TEXT_WRAP.get(hd.flow, "TOP_AND_BOTTOM"),
@@ -49,25 +47,14 @@ def map_drawing(hd):
         cur_sz=CurSz(comp.width, comp.height),
         flip=Flip(comp.flip & 1, (comp.flip >> 1) & 1),
         rotation_info=RotationInfo(angle=comp.angle, center_x=comp.center_x,
-                                   center_y=comp.center_y, rotate_image=0),
+                                   center_y=comp.center_y, rotate_image=rotate_image),
         rendering_info=RenderingInfo(trans=_matrix(comp.trans_matrix),
                                      sca=_matrix(comp.scaler_matrix),
                                      rot=_matrix(comp.rotator_matrix)),
-        line_shape=LineShape(
-            color=ls.color, width=ls.width,
-            style=_STROKE.get(ls.stroke, "SOLID"),
-            end_cap=_LINE_END.get(ls.line_end, "FLAT"),
-            head_style=_ARROW_STYLE.get(ls.arrow_start, "NORMAL"),
-            tail_style=_ARROW_STYLE.get(ls.arrow_end, "NORMAL"),
-            head_fill=ls.arrow_start_fill, tail_fill=ls.arrow_end_fill,
-            head_sz=_ARROW_SIZE.get(ls.arrow_start_size, "SMALL_SMALL"),
-            tail_sz=_ARROW_SIZE.get(ls.arrow_end_size, "SMALL_SMALL")),
-        win_brush=WinBrush(),
-        shadow=Shadow(),
-        start_pt=Pt(ls.p0[0], ls.p0[1]),
-        end_pt=Pt(ls.p1[0], ls.p1[1]),
-        sz=ShapeSz(width=hd.width, width_rel_to=_SZ_RELTO.get(hd.width_relto, "ABSOLUTE"),
-                   height=hd.height, height_rel_to=_SZ_RELTO.get(hd.height_relto, "ABSOLUTE")),
+        sz=ShapeSz(width=hd.width,
+                   width_rel_to=_SZ_RELTO.get(hd.width_relto, "ABSOLUTE"),
+                   height=hd.height,
+                   height_rel_to=_SZ_RELTO.get(hd.height_relto, "ABSOLUTE")),
         pos=ShapePos(treat_as_char=hd.inline,
                      vert_rel_to=_POS_RELTO.get(hd.vrelto, "PAPER"),
                      horz_rel_to=_POS_RELTO.get(hd.hrelto, "PAPER"),
@@ -77,3 +64,48 @@ def map_drawing(hd):
         out_margin=ShapeOutMargin(hd.margin_left, hd.margin_right,
                                   hd.margin_top, hd.margin_bottom),
     )
+
+
+def _map_line(hd):
+    comp, ls = hd.component, hd.line
+    return Line(
+        **_common_container(hd, comp, 0),
+        line_shape=LineShape(
+            color=ls.color, width=ls.width,
+            style=_STROKE.get(ls.stroke, "SOLID"),
+            end_cap=_LINE_END.get(ls.line_end, "FLAT"),
+            head_style=_ARROW_STYLE.get(ls.arrow_start, "NORMAL"),
+            tail_style=_ARROW_STYLE.get(ls.arrow_end, "NORMAL"),
+            head_fill=ls.arrow_start_fill, tail_fill=ls.arrow_end_fill,
+            head_sz=_ARROW_SIZE.get(ls.arrow_start_size, "SMALL_SMALL"),
+            tail_sz=_ARROW_SIZE.get(ls.arrow_end_size, "SMALL_SMALL")),
+        win_brush=WinBrush(), shadow=Shadow(),
+        start_pt=Pt(ls.p0[0], ls.p0[1]), end_pt=Pt(ls.p1[0], ls.p1[1]),
+    )
+
+
+def _map_pic(hd):
+    comp, pic = hd.component, hd.picture
+    r = pic.img_rect
+    return Pic(
+        **_common_container(hd, comp, 1),
+        instid=pic.instance_id,
+        img=Img(bin_item_id="image%d" % pic.bindata_id, bright=pic.brightness,
+                contrast=pic.contrast, effect=_PIC_EFFECT.get(pic.effect, "REAL_PIC")),
+        img_rect=ImgRect(pt0=Pt(*r[0]), pt1=Pt(*r[1]), pt2=Pt(*r[2]), pt3=Pt(*r[3])),
+        img_clip=ImgClip(left=pic.img_clip[0], right=pic.img_clip[1],
+                         top=pic.img_clip[2], bottom=pic.img_clip[3]),
+        in_margin=InMargin(),
+        img_dim=ImgDim(pic.dim_width, pic.dim_height),
+        shape_comment=ShapeComment(text="그림"),   # Hancom alt-text not stored in HWP
+    )
+
+
+def map_drawing(hd):
+    if hd is None or hd.component is None:
+        return None
+    if hd.kind == "line" and hd.line is not None:
+        return _map_line(hd)
+    if hd.kind == "pic" and hd.picture is not None:
+        return _map_pic(hd)
+    return None
