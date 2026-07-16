@@ -48,3 +48,7 @@ def test_sample4_section0_match_rose(tmp_path):
 def test_sample3_unchanged_no_line(tmp_path):
     sec = _section0(S3, tmp_path, "s3.hwpx")
     assert sec.count("<hp:line ") == 0
+    # no part of the drawing subtree may leak into a drawing-free document
+    for tag in ("<hp:orgSz", "<hp:curSz", "<hp:rotationInfo", "<hp:renderingInfo",
+                "<hp:lineShape", "<hc:startPt", "<hc:endPt"):
+        assert sec.count(tag) == 0, "%s leaked into sample 3" % tag
