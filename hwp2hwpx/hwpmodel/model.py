@@ -104,10 +104,24 @@ class HwpRun:
 
 
 @dataclass
+class HwpLineSeg:
+    text_pos: int = 0
+    vert_pos: int = 0
+    vert_size: int = 0
+    text_height: int = 0
+    baseline: int = 0
+    spacing: int = 0
+    horz_pos: int = 0
+    horz_size: int = 0
+    flags: int = 0
+
+
+@dataclass
 class HwpParagraph:
     para_shape_id: int
     style_id: int = 0
     runs: list = field(default_factory=list)
+    line_segs: list = field(default_factory=list)
 
 
 @dataclass
