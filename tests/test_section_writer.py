@@ -25,7 +25,7 @@ def test_section_paragraph_run_text():
     run = p.find(_hp("run"))
     assert run.get("charPrIDRef") == "3"
     texts = [t.text for t in run.iter(_hp("t"))]
-    assert texts == ["가나", "다라"]
+    assert texts == ["가나다라"]
 
 
 def test_section_paragraph_always_has_at_least_one_run():
