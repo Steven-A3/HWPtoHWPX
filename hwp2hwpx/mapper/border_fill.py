@@ -18,5 +18,5 @@ def map_border_fills(hwp_bfs):
             width=_norm_width(b.width),
             color=b.color or "#000000",
         ) for b in bf.borders]
-        out.append(BorderFill(id=bf.index, borders=borders, fill_color=bf.fill_color))
+        out.append(BorderFill(id=bf.index + 1, borders=borders, fill_color=bf.fill_color))
     return out

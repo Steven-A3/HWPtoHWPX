@@ -8,7 +8,7 @@ def test_maps_stroke_width_color_and_fill():
         HwpBorder(kind="top", stroke_type="none", width="0.1mm", color="#123456"),
     ], fill_color="#bbbbbb")]
     out = map_border_fills(src)
-    assert out[0].id == 2
+    assert out[0].id == 3          # 1-based: source index 2 -> id 3
     left = out[0].borders[0]
     assert left.kind == "left"
     assert left.type == "SOLID"
