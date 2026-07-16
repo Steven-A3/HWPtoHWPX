@@ -23,6 +23,10 @@ def _write_run(p_el, run, state):
         for item in run.texts:
             if isinstance(item, Control):
                 last = etree.SubElement(te, _hp(item.kind))
+                if item.kind == "tab":
+                    last.set("width", "0")
+                    last.set("leader", "0")
+                    last.set("type", "0")
             else:  # Text
                 if last is None:
                     te.text = (te.text or "") + item.content

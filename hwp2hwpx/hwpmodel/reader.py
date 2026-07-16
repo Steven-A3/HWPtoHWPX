@@ -251,7 +251,7 @@ def _parse_table(tc_el):
     )
 
 
-_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak"}
+_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak", "TAB": "tab"}
 
 
 def _hex_int(v):
