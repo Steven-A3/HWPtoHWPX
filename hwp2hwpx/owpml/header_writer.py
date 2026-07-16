@@ -13,6 +13,24 @@ def _hc(tag):
     return "{%s}%s" % (NS["hc"], tag)
 
 
+def _hp(tag):
+    return "{%s}%s" % (NS["hp"], tag)
+
+
+def _write_margin_and_spacing(parent, pp):
+    m = etree.SubElement(parent, _hh("margin"))
+    for tag, val in (("intent", pp.intent), ("left", pp.margin_left),
+                     ("right", pp.margin_right), ("prev", pp.margin_prev),
+                     ("next", pp.margin_next)):
+        e = etree.SubElement(m, _hc(tag))
+        e.set("value", str(val))
+        e.set("unit", "HWPUNIT")
+    ls = etree.SubElement(parent, _hh("lineSpacing"))
+    ls.set("type", pp.line_spacing_type)
+    ls.set("value", str(pp.line_spacing))
+    ls.set("unit", "HWPUNIT")
+
+
 def header_xml(header, sec_cnt=1):
     root = etree.Element(_hh("head"), nsmap=_NSMAP)
     root.set("version", "1.5")
@@ -76,14 +94,53 @@ def header_xml(header, sec_cnt=1):
         if cp.italic:
             etree.SubElement(ce, _hh("italic"))
 
+    tabs_el = etree.SubElement(ref, _hh("tabProperties"))
+    tabs_el.set("itemCnt", "1")
+    tab_el = etree.SubElement(tabs_el, _hh("tabPr"))
+    tab_el.set("id", "0")
+    tab_el.set("autoTabLeft", "0")
+    tab_el.set("autoTabRight", "0")
+
     pps = etree.SubElement(ref, _hh("paraProperties"))
     pps.set("itemCnt", str(len(header.para_prs)))
     for pp in header.para_prs:
         pe = etree.SubElement(pps, _hh("paraPr"))
         pe.set("id", str(pp.id))
+        pe.set("tabPrIDRef", str(pp.tab_pr_id))
+        pe.set("condense", "0")
+        pe.set("fontLineHeight", "0")
+        pe.set("snapToGrid", "1")
+        pe.set("suppressLineNumbers", "0")
+        pe.set("checked", "0")
         al = etree.SubElement(pe, _hh("align"))
         al.set("horizontal", pp.align)
         al.set("vertical", "BASELINE")
+        hd = etree.SubElement(pe, _hh("heading"))
+        hd.set("type", pp.heading_type)
+        hd.set("idRef", "0")
+        hd.set("level", str(pp.heading_level))
+        bs = etree.SubElement(pe, _hh("breakSetting"))
+        for k, v in (("breakLatinWord", "KEEP_WORD"),
+                     ("breakNonLatinWord", "BREAK_WORD"), ("widowOrphan", "0"),
+                     ("keepWithNext", "0"), ("keepLines", "0"),
+                     ("pageBreakBefore", "0"), ("lineWrap", "BREAK")):
+            bs.set(k, v)
+        aus = etree.SubElement(pe, _hh("autoSpacing"))
+        aus.set("eAsianEng", "0")
+        aus.set("eAsianNum", "0")
+        sw = etree.SubElement(pe, _hp("switch"))
+        case = etree.SubElement(sw, _hp("case"))
+        case.set("{%s}required-namespace" % NS["hp"],
+                 "http://www.hancom.co.kr/hwpml/2016/HwpUnitChar")
+        _write_margin_and_spacing(case, pp)
+        default = etree.SubElement(sw, _hp("default"))
+        _write_margin_and_spacing(default, pp)
+        bd = etree.SubElement(pe, _hh("border"))
+        bd.set("borderFillIDRef", str(pp.border_fill_id))
+        for k in ("offsetLeft", "offsetRight", "offsetTop", "offsetBottom"):
+            bd.set(k, "0")
+        bd.set("connect", "0")
+        bd.set("ignoreMargin", "0")
 
     # Real style mapping is a follow-up milestone; for now emit a single
     # default style (id 0) so every paragraph's styleIDRef="0" resolves
