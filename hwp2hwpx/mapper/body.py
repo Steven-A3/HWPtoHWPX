@@ -39,6 +39,10 @@ def map_paragraph(hpar, para_id):
             from .table import map_table
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
                             table=map_table(r.table)))
+        elif getattr(r, "drawing", None) is not None:
+            from .drawing import map_drawing
+            runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
+                            drawing=map_drawing(r.drawing)))
         else:
             runs.append(Run(char_pr_id=r.char_shape_id,
                             texts=_map_contents(r.contents)))
