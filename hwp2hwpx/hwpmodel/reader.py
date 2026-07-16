@@ -10,6 +10,7 @@ from .model import (
     HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
     HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
     HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing, HwpPicture,
+    HwpDocProperties, HwpCompatDocument,
 )
 
 _ALIGN_MAP = {
@@ -163,6 +164,27 @@ def _parse_tab_defs(id_mappings):
     return out
 
 
+def _parse_doc_properties(root):
+    el = root.find(".//DocumentProperties")
+    if el is None:
+        return None
+    return HwpDocProperties(
+        page_start=_int(el.get("page-startnum"), 1),
+        footnote_start=_int(el.get("footnote-startnum"), 1),
+        endnote_start=_int(el.get("endnote-startnum"), 1),
+        pic_start=_int(el.get("picture-startnum"), 1),
+        tbl_start=_int(el.get("table-startnum"), 1),
+        equation_start=_int(el.get("math-startnum"), 1),
+    )
+
+
+def _parse_compat(root):
+    el = root.find(".//CompatibleDocument")
+    if el is None:
+        return None
+    return HwpCompatDocument(target=_int(el.get("target")))
+
+
 def read_docinfo(xml_bytes):
     root = etree.fromstring(xml_bytes)
     id_mappings = root.find(".//IdMappings")
@@ -225,7 +247,9 @@ def read_docinfo(xml_bytes):
                       para_shapes=para_shapes,
                       border_fills=_parse_border_fills(id_mappings),
                       styles=_parse_styles(id_mappings),
-                      tab_defs=_parse_tab_defs(id_mappings))
+                      tab_defs=_parse_tab_defs(id_mappings),
+                      doc_properties=_parse_doc_properties(root),
+                      compat=_parse_compat(root))
 
 
 def _parse_table(tc_el):
