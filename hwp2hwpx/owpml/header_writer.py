@@ -175,12 +175,25 @@ def header_xml(header, sec_cnt=1):
         bd.set("connect", "0")
         bd.set("ignoreMargin", "0")
 
-    # Real style mapping is a follow-up milestone; for now emit a single
-    # default style (id 0) so every paragraph's styleIDRef="0" resolves
-    # to something instead of dangling.
     styles_el = etree.SubElement(ref, _hh("styles"))
-    styles_el.set("itemCnt", "1")
-    style_el = etree.SubElement(styles_el, _hh("style"))
-    style_el.set("id", "0")
+    if header.styles:
+        styles_el.set("itemCnt", str(len(header.styles)))
+        for s in header.styles:
+            se = etree.SubElement(styles_el, _hh("style"))
+            se.set("id", str(s.id))
+            se.set("type", s.type)
+            se.set("name", s.name)
+            se.set("engName", s.eng_name)
+            se.set("paraPrIDRef", str(s.para_pr_id))
+            se.set("charPrIDRef", str(s.char_pr_id))
+            se.set("nextStyleIDRef", str(s.next_style_id))
+            se.set("langID", str(s.lang_id))
+            se.set("lockForm", s.lock_form)
+    else:
+        # No styles in the document: emit a single default so every
+        # paragraph's styleIDRef="0" resolves instead of dangling.
+        styles_el.set("itemCnt", "1")
+        style_el = etree.SubElement(styles_el, _hh("style"))
+        style_el.set("id", "0")
 
     return XML_DECL + etree.tostring(root, encoding="UTF-8")
