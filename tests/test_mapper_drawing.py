@@ -63,3 +63,17 @@ def test_map_paragraph_routes_drawing_run():
     assert para.runs[0].drawing is not None
     assert para.runs[0].drawing.id == 111
     assert para.runs[0].table is None
+
+
+def test_matrix_interleave_all_six_positions():
+    # distinct a..f so a swapped c<->e2 or e<->e3 mapping would be caught.
+    from hwp2hwpx.hwpmodel.model import HwpDrawing, HwpShapeComponent, HwpLineShape
+    hd = HwpDrawing(kind="line",
+                    component=HwpShapeComponent(
+                        trans_matrix=[11, 12, 13, 14, 15, 16],
+                        scaler_matrix=[1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                        rotator_matrix=[1.0, 0.0, 0.0, 1.0, 0.0, 0.0]),
+                    line=HwpLineShape())
+    t = map_drawing(hd).rendering_info.trans
+    # mapping: e1<-a, e2<-c, e3<-e, e4<-b, e5<-d, e6<-f
+    assert (t.e1, t.e2, t.e3, t.e4, t.e5, t.e6) == ("11", "13", "15", "12", "14", "16")
