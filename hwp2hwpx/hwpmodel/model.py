@@ -50,11 +50,24 @@ class HwpParaShape:
 
 
 @dataclass
+class HwpStyle:
+    index: int
+    kind: str = "paragraph"
+    local_name: str = ""
+    eng_name: str = ""
+    para_shape_id: int = 0
+    char_shape_id: int = 0
+    next_style_id: int = 0
+    lang_id: int = 1042
+
+
+@dataclass
 class HwpDocInfo:
     fonts: list = field(default_factory=list)
     char_shapes: list = field(default_factory=list)
     para_shapes: list = field(default_factory=list)
     border_fills: list = field(default_factory=list)
+    styles: list = field(default_factory=list)
 
 
 @dataclass

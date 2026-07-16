@@ -6,6 +6,7 @@ from .fonts import map_fonts
 from .char_pr import map_char_shapes
 from .para_pr import map_para_shapes
 from .border_fill import map_border_fills
+from .style import map_styles
 
 
 def map_paragraph(hpar, para_id):
@@ -22,8 +23,8 @@ def map_paragraph(hpar, para_id):
     if not runs:
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]
-    # style_id clamped to 0: header.xml emits only the default style id 0.
-    return Para(id=para_id, para_pr_id=hpar.para_shape_id, style_id=0, runs=runs)
+    return Para(id=para_id, para_pr_id=hpar.para_shape_id,
+                style_id=hpar.style_id, runs=runs)
 
 
 def map_document(hwp_doc, title=""):
@@ -33,6 +34,7 @@ def map_document(hwp_doc, title=""):
         char_prs=map_char_shapes(di.char_shapes),
         para_prs=map_para_shapes(di.para_shapes),
         border_fills=map_border_fills(di.border_fills),
+        styles=map_styles(di.styles),
     )
     sections = []
     para_id = 0

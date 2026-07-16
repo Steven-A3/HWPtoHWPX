@@ -53,10 +53,9 @@ def test_map_document_empty_paragraph_gets_placeholder_run():
     assert para.runs[0].texts == []
 
 
-def test_map_document_clamps_style_id_to_zero():
-    """header.xml has no <hh:style> table yet (real style mapping is a
-    follow-up), so every Para must reference the single default style (id
-    0) that IS emitted -- otherwise styleIDRef dangles."""
+def test_map_document_emits_real_style_id():
+    """Real style mapping is now implemented, so every Para emits its actual
+    style_id from the HwpParagraph."""
     doc = map_document(_hwp_doc(), title="T")
     para = doc.sections[0].paras[0]
-    assert para.style_id == 0
+    assert para.style_id == 5
