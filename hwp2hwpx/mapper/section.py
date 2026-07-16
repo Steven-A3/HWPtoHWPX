@@ -18,6 +18,7 @@ _PGNUM_POS = {"bottom_center": "BOTTOM_CENTER", "bottom_left": "BOTTOM_LEFT",
               "inside_top": "INSIDE_TOP", "inside_bottom": "INSIDE_BOTTOM",
               "none": "NONE"}
 _BORDER_TYPES = ["BOTH", "EVEN", "ODD"]  # by index; documented template assumption
+_PAGE_STARTS = {0: "BOTH", 1: "EVEN", 2: "ODD"}  # HWP pagenum-on-split-section
 
 
 def _note_line_width(w):
@@ -94,9 +95,10 @@ def map_section_def(sd):
         outline_shape_id=sd.numbering_shape_id,
         grid=Grid(line_grid=sd.grid_vertical, char_grid=sd.grid_horizontal,
                   wonggoji_format=sd.squared_manuscript_paper),
-        start_num=StartNum(page=sd.starting_pagenum, pic=sd.starting_picturenum,
-                           tbl=sd.starting_tablenum,
-                           equation=sd.starting_equationnum),
+        start_num=StartNum(
+            page_starts_on=_PAGE_STARTS.get(sd.pagenum_on_split_section, "BOTH"),
+            page=sd.starting_pagenum, pic=sd.starting_picturenum,
+            tbl=sd.starting_tablenum, equation=sd.starting_equationnum),
         visibility=Visibility(
             hide_first_header=sd.hide_header,
             hide_first_footer=sd.hide_footer,

@@ -86,3 +86,12 @@ def test_map_document_attaches_sec_pr_per_section():
     out = map_document(doc)
     assert out.sections[0].sec_pr.space_columns == 11
     assert out.sections[1].sec_pr.space_columns == 22
+
+
+def test_page_starts_on_maps_from_pagenum_on_split_section():
+    # spec: pageStartsOn <- pagenum-on-split-section (0->BOTH, 1->EVEN, 2->ODD).
+    # Both samples carry 0; this exercises the non-default branches directly.
+    assert map_section_def(HwpSectionDef(pagenum_on_split_section=0)).start_num.page_starts_on == "BOTH"
+    assert map_section_def(HwpSectionDef(pagenum_on_split_section=1)).start_num.page_starts_on == "EVEN"
+    assert map_section_def(HwpSectionDef(pagenum_on_split_section=2)).start_num.page_starts_on == "ODD"
+    assert map_section_def(HwpSectionDef(pagenum_on_split_section=9)).start_num.page_starts_on == "BOTH"
