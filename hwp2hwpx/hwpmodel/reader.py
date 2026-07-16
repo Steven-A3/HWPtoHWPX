@@ -178,6 +178,16 @@ def parse_paragraph(para_el):
     )
 
 
+def _clamp_border_fill_id(n, border_fill_count):
+    """Clamp a raw (1-based) borderfill-id ref into [1, border_fill_count],
+    the range of actually-defined BorderFill ids, so it can never dangle."""
+    if n < 1:
+        return 1
+    if n > border_fill_count:
+        return border_fill_count
+    return n
+
+
 def _clamp_table_border_fill_ids(sections, border_fill_count):
     """`_border_fill_id` only guards the low end (raw 0/missing -> 1); a raw
     id past the last defined BorderFill would still dangle. Clamp every
@@ -186,20 +196,12 @@ def _clamp_table_border_fill_ids(sections, border_fill_count):
     (including nested tables inside cell paragraphs)."""
     if border_fill_count <= 0:
         return
-    last = border_fill_count  # ids are 1..count
-
-    def _clamp(n):
-        if n < 1:
-            return 1
-        if n > last:
-            return last
-        return n
 
     def _walk_table(table):
-        table.border_fill_id = _clamp(table.border_fill_id)
+        table.border_fill_id = _clamp_border_fill_id(table.border_fill_id, border_fill_count)
         for row in table.table_rows:
             for cell in row.cells:
-                cell.border_fill_id = _clamp(cell.border_fill_id)
+                cell.border_fill_id = _clamp_border_fill_id(cell.border_fill_id, border_fill_count)
                 _walk_paragraphs(cell.paragraphs)
 
     def _walk_paragraphs(paragraphs):
@@ -210,6 +212,16 @@ def _clamp_table_border_fill_ids(sections, border_fill_count):
 
     for sec in sections:
         _walk_paragraphs(sec.paragraphs)
+
+
+def _clamp_para_shape_border_fill_ids(para_shapes, border_fill_count):
+    """Mirror of `_clamp_table_border_fill_ids` for ParaShape refs: a
+    paraShape's borderfill-id must also resolve to a defined BorderFill, or
+    it emits a dangling `paraPr/@borderFillIDRef` in header.xml."""
+    if border_fill_count <= 0:
+        return
+    for ps in para_shapes:
+        ps.border_fill_id = _clamp_border_fill_id(ps.border_fill_id, border_fill_count)
 
 
 def read_document(xml_bytes):
@@ -224,5 +236,7 @@ def read_document(xml_bytes):
         sections.append(HwpSection(paragraphs=paras))
     if not sections:
         sections = [HwpSection(paragraphs=[])]
-    _clamp_table_border_fill_ids(sections, len(docinfo.border_fills))
+    border_fill_count = len(docinfo.border_fills)
+    _clamp_table_border_fill_ids(sections, border_fill_count)
+    _clamp_para_shape_border_fill_ids(docinfo.para_shapes, border_fill_count)
     return HwpDocument(docinfo=docinfo, sections=sections)
