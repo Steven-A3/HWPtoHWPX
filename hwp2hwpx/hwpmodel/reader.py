@@ -102,7 +102,19 @@ def read_docinfo(xml_bytes):
     para_shapes = []
     for i, el in enumerate(id_mappings.findall("ParaShape")):
         raw = (el.get("align") or "left").lower()
-        para_shapes.append(HwpParaShape(index=i, align=_ALIGN_MAP.get(raw, "LEFT")))
+        para_shapes.append(HwpParaShape(
+            index=i,
+            align=_ALIGN_MAP.get(raw, "LEFT"),
+            indent=_int(el.get("indent")),
+            margin_left=_int(el.get("doubled-margin-left")),
+            margin_right=_int(el.get("doubled-margin-right")),
+            margin_top=_int(el.get("doubled-margin-top")),
+            margin_bottom=_int(el.get("doubled-margin-bottom")),
+            line_spacing=_int(el.get("linespacing"), 100),
+            line_spacing_type=el.get("linespacing-type") or "ratio",
+            border_fill_id=_border_fill_id(el.get("borderfill-id")),
+            level=_int(el.get("level")),
+        ))
 
     return HwpDocInfo(fonts=fonts, char_shapes=char_shapes,
                       para_shapes=para_shapes,
