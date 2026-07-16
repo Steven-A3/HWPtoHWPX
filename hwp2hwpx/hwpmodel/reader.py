@@ -38,12 +38,11 @@ def _int(v, default=0):
 
 
 def _border_fill_id(v):
-    """HWP5's borderfill-id is 1-based (ID 1 == the first <BorderFill> in
-    IdMappings); our HwpBorderFill.index / OWPML BorderFill.id are 0-based
-    document-order indices. Shift present values down by one so refs line
-    up with definitions; a missing attribute falls back to the first entry."""
+    """HWP5 borderfill-id is 1-based and equals the OWPML borderFill id we
+    emit (definition id = document-order index + 1). Use the raw value; a
+    missing/<1 value falls back to the first definition (id 1)."""
     n = _int(v, 0)
-    return n - 1 if n > 0 else 0
+    return n if n >= 1 else 1
 
 
 def _font_group_offsets(id_mappings):
@@ -168,18 +167,18 @@ def parse_paragraph(para_el):
 
 
 def _clamp_table_border_fill_ids(sections, border_fill_count):
-    """`_border_fill_id` only guards the low end (raw 0/missing -> 0); a raw
+    """`_border_fill_id` only guards the low end (raw 0/missing -> 1); a raw
     id past the last defined BorderFill would still dangle. Clamp every
-    table/cell border_fill_id into [0, border_fill_count - 1] here, once the
+    table/cell border_fill_id into [1, border_fill_count] here, once the
     definition count is known, by walking the already-parsed section tree
     (including nested tables inside cell paragraphs)."""
     if border_fill_count <= 0:
         return
-    last = border_fill_count - 1
+    last = border_fill_count  # ids are 1..count
 
     def _clamp(n):
-        if n < 0:
-            return 0
+        if n < 1:
+            return 1
         if n > last:
             return last
         return n
