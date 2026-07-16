@@ -7,7 +7,7 @@ from .model import (
     HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
     HwpRun, HwpControl, HwpParagraph, HwpSection, HwpDocument,
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
-    HwpStyle, HwpTab, HwpTabDef,
+    HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
 )
 
 _ALIGN_MAP = {
@@ -236,6 +236,30 @@ def _parse_table(tc_el):
 _CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak"}
 
 
+def _hex_int(v):
+    try:
+        return int(v, 16)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _parse_line_segs(para_el):
+    out = []
+    for el in para_el.findall("LineSeg"):
+        out.append(HwpLineSeg(
+            text_pos=_int(el.get("chpos")),
+            vert_pos=_int(el.get("y")),
+            vert_size=_int(el.get("height")),
+            text_height=_int(el.get("height-text")),
+            baseline=_int(el.get("height-baseline")),
+            spacing=_int(el.get("space-below")),
+            horz_pos=_int(el.get("x")),
+            horz_size=_int(el.get("width")),
+            flags=_hex_int(el.get("lineseg-flags")),
+        ))
+    return out
+
+
 def parse_paragraph(para_el):
     """Build one HwpParagraph. Walk LineSeg children in reading order,
     grouping consecutive Text + inline ControlChar (fwSpace/lineBreak) that
@@ -283,6 +307,7 @@ def parse_paragraph(para_el):
         para_shape_id=_int(para_el.get("parashape-id")),
         style_id=_int(para_el.get("style-id")),
         runs=runs,
+        line_segs=_parse_line_segs(para_el),
     )
 
 

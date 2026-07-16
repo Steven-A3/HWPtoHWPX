@@ -43,6 +43,19 @@ def _write_paragraph(parent_el, para, state):
     p.set("merged", "0")
     for run in para.runs:
         _write_run(p, run, state)
+    if para.line_segs:
+        lsa = etree.SubElement(p, _hp("linesegarray"))
+        for ls in para.line_segs:
+            seg = etree.SubElement(lsa, _hp("lineseg"))
+            seg.set("textpos", str(ls.text_pos))
+            seg.set("vertpos", str(ls.vert_pos))
+            seg.set("vertsize", str(ls.vert_size))
+            seg.set("textheight", str(ls.text_height))
+            seg.set("baseline", str(ls.baseline))
+            seg.set("spacing", str(ls.spacing))
+            seg.set("horzpos", str(ls.horz_pos))
+            seg.set("horzsize", str(ls.horz_size))
+            seg.set("flags", str(ls.flags))
 
 
 def _write_table(run_el, table, state):

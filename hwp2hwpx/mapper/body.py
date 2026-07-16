@@ -1,6 +1,6 @@
 """Map a whole HwpDocument to an OwpmlDocument."""
 from ..owpml.model import (
-    OwpmlDocument, Header, Section, Para, Run, Text, Metadata, Control,
+    OwpmlDocument, Header, Section, Para, Run, Text, Metadata, Control, LineSeg,
 )
 from .fonts import map_fonts
 from .char_pr import map_char_shapes
@@ -21,6 +21,14 @@ def _map_contents(contents):
     return out
 
 
+def _map_line_segs(line_segs):
+    return [LineSeg(
+        text_pos=ls.text_pos, vert_pos=ls.vert_pos, vert_size=ls.vert_size,
+        text_height=ls.text_height, baseline=ls.baseline, spacing=ls.spacing,
+        horz_pos=ls.horz_pos, horz_size=ls.horz_size, flags=ls.flags,
+    ) for ls in line_segs]
+
+
 def map_paragraph(hpar, para_id):
     """Map one HwpParagraph to an OWPML Para. A table run becomes a Run whose
     `table` is set (deferred import breaks the body<->table recursion cycle)."""
@@ -37,7 +45,8 @@ def map_paragraph(hpar, para_id):
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]
     return Para(id=para_id, para_pr_id=hpar.para_shape_id,
-                style_id=hpar.style_id, runs=runs)
+                style_id=hpar.style_id, runs=runs,
+                line_segs=_map_line_segs(hpar.line_segs))
 
 
 def map_document(hwp_doc, title=""):
