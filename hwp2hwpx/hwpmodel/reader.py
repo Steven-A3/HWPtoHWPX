@@ -55,6 +55,29 @@ def _font_group_offsets(id_mappings):
     return offsets
 
 
+def _lang_metric(el, default):
+    """Per-language child element -> HWP-keyed dict of ints (raw values)."""
+    d = {}
+    for lang in _FONT_LANGS:
+        d[lang] = _int(el.get(lang), default) if el is not None else default
+    return d
+
+
+def _font_ref(ff, offsets):
+    """FontFace element -> HWP-keyed dict of global font indices."""
+    d = {}
+    for lang in _FONT_LANGS:
+        local = _int(ff.get(lang), 0) if ff is not None else 0
+        d[lang] = offsets.get(lang, 0) + local
+    return d
+
+
+def _shadow_space(char_shape_el, axis):
+    """ShadowSpace/@x|@y -> int (default 10)."""
+    ss = char_shape_el.find("ShadowSpace")
+    return _int(ss.get(axis), 10) if ss is not None else 10
+
+
 def _parse_border_fills(id_mappings):
     out = []
     for i, bf_el in enumerate(id_mappings.findall("BorderFill")):
@@ -90,6 +113,8 @@ def read_docinfo(xml_bytes):
     for i, el in enumerate(id_mappings.findall("CharShape")):
         ff = el.find("FontFace")
         ko_local = _int(ff.get("ko")) if ff is not None else 0
+        font_ref = _font_ref(ff, offsets)
+        underline_raw = (el.get("underline") or "none").lower()
         char_shapes.append(HwpCharShape(
             index=i,
             base_size=_int(el.get("basesize"), 1000),
@@ -97,6 +122,20 @@ def read_docinfo(xml_bytes):
             font_id=offsets.get("ko", 0) + ko_local,
             bold=el.get("bold") == "1",
             italic=el.get("italic") == "1",
+            font_ref=font_ref,
+            ratio=_lang_metric(el.find("LetterWidthExpansion"), 100),
+            spacing=_lang_metric(el.find("LetterSpacing"), 0),
+            rel_sz=_lang_metric(el.find("RelativeSize"), 100),
+            offset=_lang_metric(el.find("Position"), 0),
+            shade_color=el.get("shade-color") or "#ffffff",
+            underline_type="BOTTOM" if underline_raw not in ("none", "") else "NONE",
+            underline_shape=(el.get("underline-style") or "solid").upper(),
+            underline_color=el.get("underline-color") or "#000000",
+            outline_type="SOLID" if _int(el.get("outline")) else "NONE",
+            shadow_type="DROP" if _int(el.get("shadow")) else "NONE",
+            shadow_color=(el.get("shadow-color") or "#c0c0c0").upper(),
+            shadow_offset_x=_shadow_space(el, "x"),
+            shadow_offset_y=_shadow_space(el, "y"),
         ))
 
     para_shapes = []
