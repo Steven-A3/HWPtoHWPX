@@ -8,6 +8,7 @@ from .para_pr import map_para_shapes
 from .border_fill import map_border_fills
 from .style import map_styles
 from .tab import map_tab_defs
+from .section import map_section_def
 
 
 def _map_contents(contents):
@@ -66,6 +67,7 @@ def map_document(hwp_doc, title=""):
         for hpar in hsec.paragraphs:
             paras.append(map_paragraph(hpar, para_id))
             para_id += 1
-        sections.append(Section(paras=paras))
+        sections.append(Section(paras=paras,
+                                sec_pr=map_section_def(getattr(hsec, "sec_def", None))))
     return OwpmlDocument(header=header, sections=sections,
                          metadata=Metadata(title=title))
