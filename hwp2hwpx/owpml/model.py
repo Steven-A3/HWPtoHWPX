@@ -55,6 +55,19 @@ class ParaPr:
 
 
 @dataclass
+class Style:
+    id: int
+    type: str = "PARA"
+    name: str = ""
+    eng_name: str = ""
+    para_pr_id: int = 0
+    char_pr_id: int = 0
+    next_style_id: int = 0
+    lang_id: int = 1042
+    lock_form: str = "0"
+
+
+@dataclass
 class Text:
     content: str
 
@@ -80,6 +93,7 @@ class Header:
     char_prs: list = field(default_factory=list)
     para_prs: list = field(default_factory=list)
     border_fills: list = field(default_factory=list)
+    styles: list = field(default_factory=list)
 
 
 @dataclass
