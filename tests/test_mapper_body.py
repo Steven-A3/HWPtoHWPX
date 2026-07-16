@@ -13,7 +13,7 @@ def _hwp_doc():
     )
     sec = HwpSection(paragraphs=[
         HwpParagraph(para_shape_id=0, style_id=5,
-                     runs=[HwpRun(char_shape_id=0, text="가나다")])
+                     runs=[HwpRun(char_shape_id=0, contents=["가나다"])])
     ])
     return HwpDocument(docinfo=di, sections=[sec])
 

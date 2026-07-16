@@ -33,6 +33,6 @@ def test_map_preserves_order_and_count():
 
 def test_map_paragraph_uses_real_style_id():
     hpar = HwpParagraph(para_shape_id=2, style_id=5,
-                        runs=[HwpRun(char_shape_id=0, text="x")])
+                        runs=[HwpRun(char_shape_id=0, contents=["x"])])
     para = map_paragraph(hpar, 0)
     assert para.style_id == 5
