@@ -47,7 +47,7 @@ def _esc(s):
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
-def content_hpf(metadata, section_count):
+def content_hpf(metadata, section_count, bin_items=()):
     title = _esc(metadata.title)
     lang = _esc(metadata.language)
     items = [
@@ -61,6 +61,9 @@ def content_hpf(metadata, section_count):
         )
         itemrefs.append('<opf:itemref idref="section%d" linear="yes"/>' % i)
     items.append('<opf:item id="settings" href="settings.xml" media-type="application/xml"/>')
+    for it in bin_items:
+        items.append('<opf:item id="%s" href="BinData/%s" media-type="%s" isEmbeded="1"/>'
+                     % (_esc(it.id), _esc(it.filename), _esc(it.media_type)))
     body = (
         '<opf:package xmlns:opf="http://www.idpf.org/2007/opf/"'
         ' xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf"'

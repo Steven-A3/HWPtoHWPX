@@ -28,11 +28,14 @@ def write_hwpx(doc, out_path):
         "version.xml": package_parts.version_xml(),
         "settings.xml": package_parts.settings_xml(),
         "Contents/header.xml": header_xml(doc.header, sec_cnt=len(doc.sections)),
-        "Contents/content.hpf": package_parts.content_hpf(doc.metadata, len(doc.sections)),
+        "Contents/content.hpf": package_parts.content_hpf(
+            doc.metadata, len(doc.sections), getattr(doc, "bin_items", [])),
         "META-INF/container.xml": package_parts.container_xml(),
         "META-INF/manifest.xml": package_parts.manifest_xml(),
         "Preview/PrvText.txt": package_parts.prv_text(doc.sections),
     }
     for i, section in enumerate(doc.sections):
         parts["Contents/section%d.xml" % i] = section_xml(section)
+    for item in getattr(doc, "bin_items", []):
+        parts["BinData/%s" % item.filename] = item.data
     write_package(parts, out_path)
