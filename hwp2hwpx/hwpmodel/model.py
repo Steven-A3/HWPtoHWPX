@@ -22,6 +22,15 @@ class HwpCharShape:
 class HwpParaShape:
     index: int
     align: str = "LEFT"
+    indent: int = 0
+    margin_left: int = 0
+    margin_right: int = 0
+    margin_top: int = 0
+    margin_bottom: int = 0
+    line_spacing: int = 100
+    line_spacing_type: str = "ratio"
+    border_fill_id: int = 1
+    level: int = 0
 
 
 @dataclass

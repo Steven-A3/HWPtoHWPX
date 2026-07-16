@@ -24,6 +24,17 @@ class CharPr:
 class ParaPr:
     id: int
     align: str = "LEFT"
+    heading_type: str = "NONE"
+    heading_level: int = 0
+    intent: int = 0
+    margin_left: int = 0
+    margin_right: int = 0
+    margin_prev: int = 0
+    margin_next: int = 0
+    line_spacing: int = 100
+    line_spacing_type: str = "PERCENT"
+    border_fill_id: int = 1
+    tab_pr_id: int = 0
 
 
 @dataclass
