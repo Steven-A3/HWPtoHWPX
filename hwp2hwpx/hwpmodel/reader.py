@@ -5,7 +5,7 @@ import subprocess
 from lxml import etree
 from .model import (
     HwpFont, HwpCharShape, HwpParaShape, HwpDocInfo,
-    HwpRun, HwpParagraph, HwpSection, HwpDocument,
+    HwpRun, HwpControl, HwpParagraph, HwpSection, HwpDocument,
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
     HwpStyle, HwpTab, HwpTabDef,
 )
@@ -233,24 +233,52 @@ def _parse_table(tc_el):
     )
 
 
+_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak"}
+
+
 def parse_paragraph(para_el):
-    """Build one HwpParagraph, walking LineSeg children in reading order:
-    Text -> text run; TableControl -> table run; other controls skipped."""
+    """Build one HwpParagraph. Walk LineSeg children in reading order,
+    grouping consecutive Text + inline ControlChar (fwSpace/lineBreak) that
+    share a charshape-id into one HwpRun; a charshape-id change, a table, or
+    a PARAGRAPH_BREAK starts a new run."""
     runs = []
+    cur_cs = None
+    cur_contents = []
+
+    def flush():
+        nonlocal cur_cs, cur_contents
+        if cur_contents:
+            runs.append(HwpRun(char_shape_id=cur_cs, contents=cur_contents))
+        cur_cs = None
+        cur_contents = []
+
     for child in para_el.findall("LineSeg/*"):
         if child.tag == "Text":
             content = child.text or ""
-            if content:
-                runs.append(HwpRun(
-                    char_shape_id=_int(child.get("charshape-id")),
-                    text=content,
-                ))
+            if not content:
+                continue
+            cs = _int(child.get("charshape-id"))
+            if cur_contents and cs != cur_cs:
+                flush()
+            cur_cs = cs
+            cur_contents.append(content)
+        elif child.tag == "ControlChar":
+            kind = _CONTROL_KIND.get(child.get("name"))
+            if kind is None:
+                continue  # PARAGRAPH_BREAK and any other control chars
+            cs = _int(child.get("charshape-id"))
+            if cur_contents and cs != cur_cs:
+                flush()
+            cur_cs = cs
+            cur_contents.append(HwpControl(kind))
         elif child.tag == "TableControl":
+            flush()
             runs.append(HwpRun(
                 char_shape_id=_int(child.get("charshape-id")),
-                text="",
+                contents=[],
                 table=_parse_table(child),
             ))
+    flush()
     return HwpParagraph(
         para_shape_id=_int(para_el.get("parashape-id")),
         style_id=_int(para_el.get("style-id")),

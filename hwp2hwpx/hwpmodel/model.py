@@ -88,10 +88,19 @@ class HwpDocInfo:
 
 
 @dataclass
+class HwpControl:
+    kind: str = "fwSpace"
+
+
+@dataclass
 class HwpRun:
     char_shape_id: int
-    text: str = ""
+    contents: list = field(default_factory=list)
     table: "HwpTable" = None
+
+    @property
+    def text(self):
+        return "".join(c for c in self.contents if isinstance(c, str))
 
 
 @dataclass

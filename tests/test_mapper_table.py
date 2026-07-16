@@ -10,7 +10,7 @@ def _table():
     cell = HwpTableCell(col=0, row=0, col_span=2, row_span=1, width=100, height=50,
                         border_fill_id=5, valign="middle",
                         paragraphs=[HwpParagraph(para_shape_id=0,
-                                                 runs=[HwpRun(char_shape_id=3, text="가")])])
+                                                 runs=[HwpRun(char_shape_id=3, contents=["가"])])])
     return HwpTable(rows=1, cols=2, cell_spacing=0, border_fill_id=4,
                     width=100, height=50, table_rows=[HwpTableRow(cells=[cell])])
 

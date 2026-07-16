@@ -83,6 +83,8 @@ def prv_text(sections):
             buf = []
             for run in para.runs:
                 for t in run.texts:
-                    buf.append(t.content)
+                    c = getattr(t, "content", None)
+                    if c:
+                        buf.append(c)
             lines.append("".join(buf))
     return ("\n".join(lines)).encode("utf-8")

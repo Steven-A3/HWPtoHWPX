@@ -88,6 +88,11 @@ class Text:
 
 
 @dataclass
+class Control:
+    kind: str = "fwSpace"
+
+
+@dataclass
 class Run:
     char_pr_id: int
     texts: list = field(default_factory=list)
