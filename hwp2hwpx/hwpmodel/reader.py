@@ -8,6 +8,8 @@ from .model import (
     HwpRun, HwpControl, HwpParagraph, HwpSection, HwpDocument,
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
     HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
+    HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
+    HwpSectionDef,
 )
 
 _ALIGN_MAP = {
@@ -416,6 +418,108 @@ def _clamp_paragraph_style_ids(sections, style_count):
         _walk(sec.paragraphs)
 
 
+def _parse_page_def(sec_el):
+    pd = sec_el.find("PageDef")
+    if pd is None:
+        return None
+    return HwpPageDef(
+        width=_int(pd.get("width")),
+        height=_int(pd.get("height")),
+        orientation=pd.get("orientation") or "portrait",
+        bookbinding=pd.get("bookbinding") or "left",
+        bookbinding_offset=_int(pd.get("bookbinding-offset")),
+        left_offset=_int(pd.get("left-offset")),
+        right_offset=_int(pd.get("right-offset")),
+        top_offset=_int(pd.get("top-offset")),
+        bottom_offset=_int(pd.get("bottom-offset")),
+        header_offset=_int(pd.get("header-offset")),
+        footer_offset=_int(pd.get("footer-offset")),
+    )
+
+
+def _parse_note_shape(el):
+    return HwpNoteShape(
+        notes_spacing=_int(el.get("notes-spacing")),
+        prefix=el.get("prefix") or "",
+        suffix=el.get("suffix") or "",
+        usersymbol=el.get("usersymbol") or "",
+        stroke_type=el.get("stroke-type") or "none",
+        line_width=el.get("width") or "0.12mm",
+        splitter_length=_int(el.get("splitter-length")),
+        splitter_color=el.get("splitter-color") or "#000000",
+        splitter_margin_top=_int(el.get("splitter-margin-top")),
+        splitter_margin_bottom=_int(el.get("splitter-margin-bottom")),
+        starting_number=_int(el.get("starting-number"), 1),
+    )
+
+
+def _parse_page_borders(sec_el):
+    out = []
+    for el in sec_el.findall("PageBorderFill"):
+        out.append(HwpPageBorder(
+            borderfill_id=_int(el.get("borderfill-id"), 1),
+            relative_to=el.get("relative-to") or "paper",
+            fill=el.get("fill") or "paper",
+            include_header=_int(el.get("include-header")),
+            include_footer=_int(el.get("include-footer")),
+            margin_left=_int(el.get("margin-left")),
+            margin_right=_int(el.get("margin-right")),
+            margin_top=_int(el.get("margin-top")),
+            margin_bottom=_int(el.get("margin-bottom")),
+        ))
+    return out
+
+
+def _parse_section_def(sec_el):
+    first_para = sec_el.find("ColumnSet/Paragraph")  # per-section scope
+    columns = None
+    page_num = None
+    if first_para is not None:
+        cd = first_para.find(".//ColumnsDef")
+        if cd is not None:
+            columns = HwpColumnsDef(
+                count=_int(cd.get("count"), 1),
+                kind=cd.get("kind") or "normal",
+                direction=cd.get("direction") or "l2r",
+                same_widths=_int(cd.get("same-widths"), 1),
+            )
+        pn = first_para.find(".//PageNumberPosition")
+        if pn is not None:
+            page_num = HwpPageNum(
+                position=pn.get("position") or "bottom_center",
+                shape=_int(pn.get("shape")),
+                dash=pn.get("dash") or "-",
+            )
+    foots = sec_el.findall("FootnoteShape")
+    return HwpSectionDef(
+        column_spacing=_int(sec_el.get("columnspacing")),
+        default_tab_stops=_int(sec_el.get("defaultTabStops")),
+        text_direction=_int(sec_el.get("text-direction")),
+        grid_horizontal=_int(sec_el.get("grid-horizontal")),
+        grid_vertical=_int(sec_el.get("grid-vertical")),
+        squared_manuscript_paper=_int(sec_el.get("squared-manuscript-paper")),
+        numbering_shape_id=_int(sec_el.get("numbering-shape-id")),
+        starting_pagenum=_int(sec_el.get("starting-pagenum")),
+        starting_picturenum=_int(sec_el.get("starting-picturenum")),
+        starting_tablenum=_int(sec_el.get("starting-tablenum")),
+        starting_equationnum=_int(sec_el.get("starting-equationnum")),
+        pagenum_on_split_section=_int(sec_el.get("pagenum-on-split-section")),
+        hide_header=_int(sec_el.get("hide-header")),
+        hide_footer=_int(sec_el.get("hide-footer")),
+        hide_border=_int(sec_el.get("hide-border")),
+        hide_pagenumber=_int(sec_el.get("hide-pagenumber")),
+        hide_blank_line=_int(sec_el.get("hide-blank-line")),
+        show_background_on_first_page_only=_int(
+            sec_el.get("show-background-on-first-page-only")),
+        page=_parse_page_def(sec_el),
+        footnote=_parse_note_shape(foots[0]) if len(foots) >= 1 else None,
+        endnote=_parse_note_shape(foots[1]) if len(foots) >= 2 else None,
+        page_borders=_parse_page_borders(sec_el),
+        columns=columns,
+        page_num=page_num,
+    )
+
+
 def read_document(xml_bytes):
     docinfo = read_docinfo(xml_bytes)
     root = etree.fromstring(xml_bytes)
@@ -425,7 +529,8 @@ def read_document(xml_bytes):
         for col in sec_el.findall("ColumnSet"):
             for para_el in col.findall("Paragraph"):
                 paras.append(parse_paragraph(para_el))
-        sections.append(HwpSection(paragraphs=paras))
+        sections.append(HwpSection(paragraphs=paras,
+                                   sec_def=_parse_section_def(sec_el)))
     if not sections:
         sections = [HwpSection(paragraphs=[])]
     border_fill_count = len(docinfo.border_fills)
