@@ -1,8 +1,18 @@
 """Map HWP tables to OWPML tables. Cell paragraphs reuse map_paragraph."""
+from ..hwpmodel.model import HwpParagraph
 from ..owpml.model import Table, TableRow, Tc
 from .body import map_paragraph
 
 _VALIGN = {"middle": "CENTER", "center": "CENTER", "top": "TOP", "bottom": "BOTTOM"}
+
+
+def _map_cell_paras(paragraphs):
+    if not paragraphs:
+        # HWPX requires at least one hp:p per subList; an emptied-out cell
+        # (e.g. a cleared table cell) still needs one placeholder paragraph
+        # with one empty hp:run, mirroring the body-paragraph guard.
+        return [map_paragraph(HwpParagraph(para_shape_id=0), 0)]
+    return [map_paragraph(p, i) for i, p in enumerate(paragraphs)]
 
 
 def map_table(hwp_table):
@@ -19,7 +29,7 @@ def map_table(hwp_table):
                 height=c.height,
                 border_fill_id=c.border_fill_id,
                 valign=_VALIGN.get((c.valign or "").lower(), "CENTER"),
-                paras=[map_paragraph(p, i) for i, p in enumerate(c.paragraphs)],
+                paras=_map_cell_paras(c.paragraphs),
             ))
         rows.append(TableRow(cells=cells))
     return Table(

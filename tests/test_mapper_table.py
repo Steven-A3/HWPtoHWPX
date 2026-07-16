@@ -33,6 +33,17 @@ def test_map_paragraph_with_table_run():
     assert para.runs[0].table.col_cnt == 2
 
 
+def test_empty_cell_gets_placeholder_paragraph():
+    cell = HwpTableCell(col=0, row=0, col_span=1, row_span=1, width=10, height=10,
+                        border_fill_id=0, valign="middle", paragraphs=[])
+    table = HwpTable(rows=1, cols=1, cell_spacing=0, border_fill_id=0,
+                     width=10, height=10, table_rows=[HwpTableRow(cells=[cell])])
+    t = map_table(table)
+    tc = t.rows[0].cells[0]
+    assert len(tc.paras) == 1
+    assert len(tc.paras[0].runs) == 1
+
+
 def test_map_document_wires_border_fills():
     di = HwpDocInfo(border_fills=[HwpBorderFill(index=0, borders=[
         HwpBorder(kind="left", stroke_type="solid", width="0.4mm", color="#000000")])])
