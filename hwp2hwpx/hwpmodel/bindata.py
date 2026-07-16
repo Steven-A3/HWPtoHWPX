@@ -37,6 +37,14 @@ def _collect_pic_bindata_ids(hwp_doc):
     return ids
 
 
+def _stream_num(base):
+    """Stream number of a 'BINxxxx.ext' name. pyhwp names BinData streams
+    BIN%04X (hex), while `PictureInfo bindata-id` is decimal — so parse the
+    stream number as hex to make the two agree for ids >= 10 (e.g. BIN000A
+    corresponds to bindata-id 10, not the ValueError that int('000A') raises)."""
+    return int(base[3:].split(".", 1)[0], 16)   # 'BIN000A.bmp' -> 10
+
+
 def _list_bindata_streams(hwp_path):
     """{id_int: 'BinData/BIN000N.ext'} from `hwp5proc ls`."""
     out = subprocess.run([_hwp5proc(), "ls", hwp_path],
@@ -46,9 +54,8 @@ def _list_bindata_streams(hwp_path):
         line = line.strip()
         if line.startswith("BinData/BIN"):
             base = line.rsplit("/", 1)[-1]        # BIN0001.bmp
-            num = base[3:].split(".", 1)[0]        # 0001
             try:
-                streams[int(num)] = line
+                streams[_stream_num(base)] = line
             except ValueError:
                 pass
     return streams

@@ -26,3 +26,13 @@ def test_extract_three_byte_identical_images():
 
 def test_no_pictures_no_bin_items():
     assert extract_bin_items(S3, _doc(S3)) == []
+
+
+def test_stream_num_parses_hex_not_decimal():
+    # pyhwp names BinData streams BIN%04X (hex); bindata-id is decimal. The two
+    # only coincide for ids 1-9, so parsing must be hex to survive >= 10 images.
+    from hwp2hwpx.hwpmodel.bindata import _stream_num
+    assert _stream_num("BIN0001.bmp") == 1
+    assert _stream_num("BIN0009.bmp") == 9
+    assert _stream_num("BIN000A.bmp") == 10   # was ValueError -> image dropped
+    assert _stream_num("BIN0010.png") == 16   # was wrongly parsed as 10
