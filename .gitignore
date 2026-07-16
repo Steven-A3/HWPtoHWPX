@@ -6,3 +6,6 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# Private test documents — never publish (government docs)
+samples/
