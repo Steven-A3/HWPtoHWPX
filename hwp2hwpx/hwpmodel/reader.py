@@ -9,7 +9,7 @@ from .model import (
     HwpBorder, HwpBorderFill, HwpTable, HwpTableRow, HwpTableCell,
     HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
     HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
-    HwpSectionDef,
+    HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing,
 )
 
 _ALIGN_MAP = {
@@ -36,6 +36,13 @@ def hwp5_xml(hwp_path):
 def _int(v, default=0):
     try:
         return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _float(v, default=0.0):
+    try:
+        return float(v)
     except (TypeError, ValueError):
         return default
 
@@ -280,6 +287,90 @@ def _parse_line_segs(para_el):
     return out
 
 
+def _matrix_values(m_el):
+    if m_el is None:
+        return [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+    return [_float(m_el.get(k)) for k in ("a", "b", "c", "d", "e", "f")]
+
+
+def _parse_shape_component(comp_el):
+    center = comp_el.find("Coord[@attribute-name='rotation_center']")
+    trans = comp_el.find("Matrix[@attribute-name='translation']")
+    scaler = comp_el.find(".//Matrix[@attribute-name='scaler']")
+    rotator = comp_el.find(".//Matrix[@attribute-name='rotator']")
+    return HwpShapeComponent(
+        angle=_int(comp_el.get("angle")),
+        flip=_int(comp_el.get("flip")),
+        initial_width=_int(comp_el.get("initial-width")),
+        initial_height=_int(comp_el.get("initial-height")),
+        width=_int(comp_el.get("width")),
+        height=_int(comp_el.get("height")),
+        center_x=_int(center.get("x")) if center is not None else 0,
+        center_y=_int(center.get("y")) if center is not None else 0,
+        trans_matrix=_matrix_values(trans),
+        scaler_matrix=_matrix_values(scaler),
+        rotator_matrix=_matrix_values(rotator),
+    )
+
+
+def _parse_line_shape(comp_el):
+    bl = comp_el.find("BorderLine[@attribute-name='line']")
+    if bl is None:
+        bl = etree.Element("BorderLine")
+    sl = comp_el.find("ShapeLine")
+    p0 = sl.find("Coord[@attribute-name='p0']") if sl is not None else None
+    p1 = sl.find("Coord[@attribute-name='p1']") if sl is not None else None
+    return HwpLineShape(
+        color=bl.get("color") or "#000000",
+        width=_int(bl.get("width")),
+        stroke=bl.get("stroke") or "solid",
+        line_end=bl.get("line-end") or "flat",
+        arrow_start=bl.get("arrow-start") or "none",
+        arrow_end=bl.get("arrow-end") or "none",
+        arrow_start_fill=_int(bl.get("arrow-start-fill"), 1),
+        arrow_end_fill=_int(bl.get("arrow-end-fill"), 1),
+        arrow_start_size=bl.get("arrow-start-size") or "smallest",
+        arrow_end_size=bl.get("arrow-end-size") or "smallest",
+        p0=(_int(p0.get("x")), _int(p0.get("y"))) if p0 is not None else (0, 0),
+        p1=(_int(p1.get("x")), _int(p1.get("y"))) if p1 is not None else (0, 0),
+    )
+
+
+def _parse_drawing(gso_el):
+    """GShapeObjectControl -> HwpDrawing. Slice A: only line ($lin) components;
+    other kinds ($pic, $rec, ...) return None (skipped until Slice B)."""
+    comp = gso_el.find("ShapeComponent")
+    if comp is None:
+        return None
+    chid0 = (comp.get("chid0") or comp.get("chid") or "").strip()
+    if chid0 != "$lin":
+        return None
+    return HwpDrawing(
+        kind="line",
+        instance_id=_int(gso_el.get("instance-id")),
+        z_order=_int(gso_el.get("z-order")),
+        flow=gso_el.get("flow") or "block",
+        text_side=gso_el.get("text-side") or "both",
+        x=_int(gso_el.get("x")),
+        y=_int(gso_el.get("y")),
+        width=_int(gso_el.get("width")),
+        height=_int(gso_el.get("height")),
+        hrelto=gso_el.get("hrelto") or "paper",
+        vrelto=gso_el.get("vrelto") or "paper",
+        halign=gso_el.get("halign") or "left",
+        valign=gso_el.get("valign") or "top",
+        inline=_int(gso_el.get("inline")),
+        margin_left=_int(gso_el.get("margin-left")),
+        margin_right=_int(gso_el.get("margin-right")),
+        margin_top=_int(gso_el.get("margin-top")),
+        margin_bottom=_int(gso_el.get("margin-bottom")),
+        width_relto=gso_el.get("width-relto") or "absolute",
+        height_relto=gso_el.get("height-relto") or "absolute",
+        component=_parse_shape_component(comp),
+        line=_parse_line_shape(comp),
+    )
+
+
 def parse_paragraph(para_el):
     """Build one HwpParagraph. Walk LineSeg children in reading order,
     grouping consecutive Text + inline ControlChar (fwSpace/lineBreak) that
@@ -322,6 +413,15 @@ def parse_paragraph(para_el):
                 contents=[],
                 table=_parse_table(child),
             ))
+        elif child.tag == "GShapeObjectControl":
+            drawing = _parse_drawing(child)
+            if drawing is not None:
+                flush()
+                runs.append(HwpRun(
+                    char_shape_id=_int(child.get("charshape-id")),
+                    contents=[],
+                    drawing=drawing,
+                ))
     flush()
     return HwpParagraph(
         para_shape_id=_int(para_el.get("parashape-id")),
