@@ -48,6 +48,18 @@ def header_xml(header, sec_cnt=1):
             fe.set("face", f.face)
             fe.set("type", f.type)
             fe.set("isEmbedded", "1" if f.is_embedded else "0")
+            if f.type_info is not None:
+                ti = f.type_info
+                te = etree.SubElement(fe, _hh("typeInfo"))
+                te.set("familyType", ti.family_type)
+                te.set("weight", str(ti.weight))
+                te.set("proportion", str(ti.proportion))
+                te.set("contrast", str(ti.contrast))
+                te.set("strokeVariation", str(ti.stroke_variation))
+                te.set("armStyle", str(ti.arm_style))
+                te.set("letterform", str(ti.letterform))
+                te.set("midline", str(ti.midline))
+                te.set("xHeight", str(ti.x_height))
 
     bfs_el = etree.SubElement(ref, _hh("borderFills"))
     bfs_el.set("itemCnt", str(len(header.border_fills)))
