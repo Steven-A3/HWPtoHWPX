@@ -197,6 +197,7 @@ class HwpRun:
     char_shape_id: int
     contents: list = field(default_factory=list)
     table: "HwpTable" = None
+    drawing: "HwpDrawing" = None
 
     @property
     def text(self):
@@ -278,3 +279,60 @@ class HwpTable:
     width: int = 0
     height: int = 0
     table_rows: list = field(default_factory=list)
+
+
+@dataclass
+class HwpShapeComponent:
+    angle: int = 0
+    flip: int = 0
+    initial_width: int = 0
+    initial_height: int = 0
+    width: int = 0
+    height: int = 0
+    center_x: int = 0
+    center_y: int = 0
+    trans_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    scaler_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    rotator_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+
+
+@dataclass
+class HwpLineShape:
+    color: str = "#000000"
+    width: int = 0
+    stroke: str = "solid"
+    line_end: str = "flat"
+    arrow_start: str = "none"
+    arrow_end: str = "none"
+    arrow_start_fill: int = 1
+    arrow_end_fill: int = 1
+    arrow_start_size: str = "smallest"
+    arrow_end_size: str = "smallest"
+    p0: tuple = (0, 0)
+    p1: tuple = (0, 0)
+
+
+@dataclass
+class HwpDrawing:
+    kind: str = "line"
+    instance_id: int = 0
+    z_order: int = 0
+    flow: str = "block"
+    text_side: str = "both"
+    x: int = 0
+    y: int = 0
+    width: int = 0
+    height: int = 0
+    hrelto: str = "paper"
+    vrelto: str = "paper"
+    halign: str = "left"
+    valign: str = "top"
+    inline: int = 0
+    margin_left: int = 0
+    margin_right: int = 0
+    margin_top: int = 0
+    margin_bottom: int = 0
+    width_relto: str = "absolute"
+    height_relto: str = "absolute"
+    component: "HwpShapeComponent" = None
+    line: "HwpLineShape" = None
