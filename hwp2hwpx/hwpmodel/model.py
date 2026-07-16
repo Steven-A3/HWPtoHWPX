@@ -16,6 +16,22 @@ class HwpCharShape:
     font_id: int = 0
     bold: bool = False
     italic: bool = False
+    font_ref: dict = field(default_factory=dict)   # HWP-keyed: ko/en/cn/jp/other/symbol/user -> global font index
+    ratio: dict = field(default_factory=dict)       # HWP-keyed -> int (LetterWidthExpansion)
+    spacing: dict = field(default_factory=dict)     # HWP-keyed -> int (LetterSpacing)
+    rel_sz: dict = field(default_factory=dict)      # HWP-keyed -> int (RelativeSize)
+    offset: dict = field(default_factory=dict)      # HWP-keyed -> int (Position)
+    shade_color: str = "#ffffff"
+    underline_type: str = "NONE"
+    underline_shape: str = "SOLID"
+    underline_color: str = "#000000"
+    strikeout_shape: str = "NONE"
+    strikeout_color: str = "#000000"
+    outline_type: str = "NONE"
+    shadow_type: str = "NONE"
+    shadow_color: str = "#C0C0C0"
+    shadow_offset_x: int = 10
+    shadow_offset_y: int = 10
 
 
 @dataclass

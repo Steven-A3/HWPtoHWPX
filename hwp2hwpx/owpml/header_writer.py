@@ -81,18 +81,51 @@ def header_xml(header, sec_cnt=1):
 
     cps = etree.SubElement(ref, _hh("charProperties"))
     cps.set("itemCnt", str(len(header.char_prs)))
+    _CP_LANGS = ("hangul", "latin", "hanja", "japanese", "other", "symbol", "user")
     for cp in header.char_prs:
         ce = etree.SubElement(cps, _hh("charPr"))
         ce.set("id", str(cp.id))
         ce.set("height", str(cp.height))
         ce.set("textColor", cp.text_color)
-        fr = etree.SubElement(ce, _hh("fontRef"))
-        for lang in ("hangul", "latin", "hanja", "japanese", "other", "symbol", "user"):
-            fr.set(lang, str(cp.font_ref_id))
-        if cp.bold:
-            etree.SubElement(ce, _hh("bold"))
+        ce.set("shadeColor", cp.shade_color)
+        ce.set("useFontSpace", "0")
+        ce.set("useKerning", "0")
+        ce.set("symMark", "NONE")
+        ce.set("borderFillIDRef", str(cp.border_fill_id))
+
+        def _langset(tag, values, default):
+            el = etree.SubElement(ce, _hh(tag))
+            for lang in _CP_LANGS:
+                el.set(lang, str(values.get(lang, default)))
+
+        _langset("fontRef", cp.font_ref, 0)
+        _langset("ratio", cp.ratio, 100)
+        _langset("spacing", cp.spacing, 0)
+        _langset("relSz", cp.rel_sz, 100)
+        _langset("offset", cp.offset, 0)
+
         if cp.italic:
             etree.SubElement(ce, _hh("italic"))
+        if cp.bold:
+            etree.SubElement(ce, _hh("bold"))
+
+        ul = etree.SubElement(ce, _hh("underline"))
+        ul.set("type", cp.underline_type)
+        ul.set("shape", cp.underline_shape)
+        ul.set("color", cp.underline_color)
+
+        st = etree.SubElement(ce, _hh("strikeout"))
+        st.set("shape", cp.strikeout_shape)
+        st.set("color", cp.strikeout_color)
+
+        ol = etree.SubElement(ce, _hh("outline"))
+        ol.set("type", cp.outline_type)
+
+        sh = etree.SubElement(ce, _hh("shadow"))
+        sh.set("type", cp.shadow_type)
+        sh.set("color", cp.shadow_color)
+        sh.set("offsetX", str(cp.shadow_offset_x))
+        sh.set("offsetY", str(cp.shadow_offset_y))
 
     tabs_el = etree.SubElement(ref, _hh("tabProperties"))
     tabs_el.set("itemCnt", "1")
