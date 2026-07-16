@@ -2,7 +2,7 @@
 from hwp2hwpx.owpml.model import (
     SecPr, Grid, StartNum, Visibility, LineNumberShape, PagePr, Margin,
     NotePr, AutoNumFormat, NoteLine, NoteSpacing, Numbering, Placement,
-    PageBorderFill, Offset, ColPr, PageNum, Section,
+    PageBorderFill, ColPr, PageNum, Section,
 )
 
 
