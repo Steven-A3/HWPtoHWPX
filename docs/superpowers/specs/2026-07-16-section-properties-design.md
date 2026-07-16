@@ -137,10 +137,10 @@ no line numbering in samples).
   left_offset, right_offset, top_offset, bottom_offset, header_offset,
   footer_offset)` — ints except `orientation`/`bookbinding` (str).
 - `HwpNoteShape(notes_spacing, prefix, suffix, usersymbol, stroke_type,
-  splitter_length, splitter_width, splitter_color, splitter_margin_top,
+  line_width, splitter_length, splitter_color, splitter_margin_top,
   splitter_margin_bottom, starting_number)` — `stroke_type` (HWP `stroke-type`,
-  e.g. `solid`/`none`) feeds `noteLine type`; `splitter_length` feeds
-  `noteLine length`.
+  e.g. `solid`/`none`) feeds `noteLine type`; `line_width` (HWP `width`, e.g.
+  `"0.12mm"`) feeds `noteLine width`; `splitter_length` feeds `noteLine length`.
 - `HwpPageBorder(borderfill_id, relative_to, fill, include_header, include_footer,
   margin_left, margin_right, margin_top, margin_bottom)`.
 - `HwpColumnsDef(count, kind, direction, same_widths)`.
@@ -205,12 +205,16 @@ the same leading run as `secPr` is valid and score-neutral (count is `min(our, t
   neighbor derived from the same `SectionDef` first-page flags, but it lives in its
   own run with content-dependent placement. It is **out of scope** here to keep the
   subtree-equality gate clean; documented for a follow-up.
-- **Multi-section documents are out of scope.** Both samples are single-section.
-  `convert` currently emits only `section0.xml`. This milestone makes that **loud**:
-  `convert` emits a documented warning (and a test pins the behavior) when
-  `len(sections) > 1`, instead of silently dropping later sections. Each section
-  still gets its `sec_def`/`sec_pr` attached correctly, so multi-section writing
-  (its own milestone — needs container/manifest work) is purely additive later.
+- **Multi-section is handled naturally, not silently dropped.** The pipeline
+  already supports N sections end to end: `read_document` produces one `HwpSection`
+  per `SectionDef`, and `write_hwpx` already loops `for i, section in
+  enumerate(doc.sections)` writing `section{i}.xml` (header/manifest/content.hpf
+  carry `sec_cnt`). This milestone attaches `sec_def`/`sec_pr` **per section**, so
+  each section emits its own `secPr` — multi-section `secPr` falls out for free. The
+  earlier "single-section limitation" framing was based on a misread of the writer;
+  no warning/guard is needed. The only per-section requirement is that the
+  `ColumnsDef`/`PageNumberPosition` scan is scoped to **that section's own** first
+  paragraph (never a global `.//` scan), which the reader design already specifies.
 - **`substFont`, `subscript`, drawing objects/images, remaining small section items**
   (`autoNumFormat`/`noteLine`/`noteSpacing` already covered inside secPr; `ctrl`
   bodies for header/footer/footnote text) remain out of scope.
@@ -260,8 +264,9 @@ verified target for a constructed `HwpSectionDef`; enum mappings
 `secPr`, `grid`, `pagePr`, `footNotePr`, `endNotePr`, `pageBorderFill`, `colPr`,
 `pageNum` leave the miss lists.
 
-**Explicit limitation.** A test pins single-section emission and the documented
-`len(sections) > 1` warning path.
+**Multi-section correctness.** A test constructs a two-section `HwpDocument`, maps
+it, and asserts each `Section` gets its own `sec_pr` from its own `sec_def` (the
+pipeline already writes `section0.xml`/`section1.xml`).
 
 ## Key risks
 
@@ -276,8 +281,9 @@ verified target for a constructed `HwpSectionDef`; enum mappings
 - **Two-sample generalization** — mitigated by the confirmed value divergence between
   the samples (margins, `hide-blank-line`), which forces genuine derivation, plus the
   synthetic unit tests for absence/breadth.
-- **Multi-section silent drop** — mitigated by per-section-scoped control scanning and
-  the loud `len(sections) > 1` warning + pinning test.
+- **Per-section correctness** — the pipeline already emits N `section{i}.xml`;
+  mitigated by per-section-scoped control scanning and per-section `sec_def`/`sec_pr`
+  attachment, verified by a two-section mapper test.
 - **`secPr` as first run's first child** must not break existing paragraph-0 tests
   (table emission). Mitigated by making the secPr run purely additive (a new leading
   run) and keeping the existing runs unchanged.
