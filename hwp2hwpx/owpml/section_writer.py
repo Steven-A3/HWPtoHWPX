@@ -14,6 +14,10 @@ def _hp(tag):
     return "{%s}%s" % (NS["hp"], tag)
 
 
+def _hc(tag):
+    return "{%s}%s" % (NS["hc"], tag)
+
+
 def _write_run(p_el, run, state):
     r = etree.SubElement(p_el, _hp("run"))
     r.set("charPrIDRef", str(run.char_pr_id))
@@ -34,6 +38,8 @@ def _write_run(p_el, run, state):
                     last.tail = (last.tail or "") + item.content
     if getattr(run, "table", None) is not None:
         _write_table(r, run.table, state)
+    if getattr(run, "drawing", None) is not None:
+        _write_line(r, run.drawing)
 
 
 def _write_sec_pr(run_el, sp):
@@ -185,6 +191,77 @@ def _write_paragraph(parent_el, para, state, sec_pr=None):
             seg.set("horzpos", str(ls.horz_pos))
             seg.set("horzsize", str(ls.horz_size))
             seg.set("flags", str(ls.flags))
+
+
+def _write_line(run_el, ln):
+    e = etree.SubElement(run_el, _hp("line"))
+    for k, v in (("id", str(ln.id)), ("zOrder", str(ln.z_order)),
+                 ("numberingType", "PICTURE"), ("textWrap", ln.text_wrap),
+                 ("textFlow", ln.text_flow), ("lock", "0"),
+                 ("dropcapstyle", "None"), ("href", ""), ("groupLevel", "0"),
+                 ("instid", str(ln.instid)), ("isReverseHV", "0")):
+        e.set(k, v)
+    off = etree.SubElement(e, _hp("offset"))
+    off.set("x", str(ln.offset.x)); off.set("y", str(ln.offset.y))
+    osz = etree.SubElement(e, _hp("orgSz"))
+    osz.set("width", str(ln.org_sz.width)); osz.set("height", str(ln.org_sz.height))
+    csz = etree.SubElement(e, _hp("curSz"))
+    csz.set("width", str(ln.cur_sz.width)); csz.set("height", str(ln.cur_sz.height))
+    fl = etree.SubElement(e, _hp("flip"))
+    fl.set("horizontal", str(ln.flip.horizontal))
+    fl.set("vertical", str(ln.flip.vertical))
+    ri = ln.rotation_info
+    r = etree.SubElement(e, _hp("rotationInfo"))
+    r.set("angle", str(ri.angle)); r.set("centerX", str(ri.center_x))
+    r.set("centerY", str(ri.center_y)); r.set("rotateimage", str(ri.rotate_image))
+    rend = etree.SubElement(e, _hp("renderingInfo"))
+    for tag, m in (("transMatrix", ln.rendering_info.trans),
+                   ("scaMatrix", ln.rendering_info.sca),
+                   ("rotMatrix", ln.rendering_info.rot)):
+        me = etree.SubElement(rend, _hc(tag))
+        for i in range(1, 7):
+            me.set("e%d" % i, getattr(m, "e%d" % i))
+    lsh = ln.line_shape
+    lse = etree.SubElement(e, _hp("lineShape"))
+    for k, v in (("color", lsh.color), ("width", str(lsh.width)),
+                 ("style", lsh.style), ("endCap", lsh.end_cap),
+                 ("headStyle", lsh.head_style), ("tailStyle", lsh.tail_style),
+                 ("headfill", str(lsh.head_fill)), ("tailfill", str(lsh.tail_fill)),
+                 ("headSz", lsh.head_sz), ("tailSz", lsh.tail_sz),
+                 ("outlineStyle", lsh.outline_style), ("alpha", str(lsh.alpha))):
+        lse.set(k, v)
+    fb = etree.SubElement(e, _hc("fillBrush"))
+    wb = etree.SubElement(fb, _hc("winBrush"))
+    wb.set("faceColor", ln.win_brush.face_color)
+    wb.set("hatchColor", ln.win_brush.hatch_color)
+    wb.set("alpha", str(ln.win_brush.alpha))
+    sh = etree.SubElement(e, _hp("shadow"))
+    sh.set("type", ln.shadow.type); sh.set("color", ln.shadow.color)
+    sh.set("offsetX", str(ln.shadow.offset_x)); sh.set("offsetY", str(ln.shadow.offset_y))
+    sh.set("alpha", str(ln.shadow.alpha))
+    sp = etree.SubElement(e, _hc("startPt"))
+    sp.set("x", str(ln.start_pt.x)); sp.set("y", str(ln.start_pt.y))
+    ep = etree.SubElement(e, _hc("endPt"))
+    ep.set("x", str(ln.end_pt.x)); ep.set("y", str(ln.end_pt.y))
+    sz = etree.SubElement(e, _hp("sz"))
+    sz.set("width", str(ln.sz.width)); sz.set("widthRelTo", ln.sz.width_rel_to)
+    sz.set("height", str(ln.sz.height)); sz.set("heightRelTo", ln.sz.height_rel_to)
+    sz.set("protect", str(ln.sz.protect))
+    po = ln.pos
+    pe = etree.SubElement(e, _hp("pos"))
+    for k, v in (("treatAsChar", str(po.treat_as_char)),
+                 ("affectLSpacing", str(po.affect_lspacing)),
+                 ("flowWithText", str(po.flow_with_text)),
+                 ("allowOverlap", str(po.allow_overlap)),
+                 ("holdAnchorAndSO", str(po.hold_anchor_and_so)),
+                 ("vertRelTo", po.vert_rel_to), ("horzRelTo", po.horz_rel_to),
+                 ("vertAlign", po.vert_align), ("horzAlign", po.horz_align),
+                 ("vertOffset", str(po.vert_offset)),
+                 ("horzOffset", str(po.horz_offset))):
+        pe.set(k, v)
+    om = etree.SubElement(e, _hp("outMargin"))
+    for side in ("left", "right", "top", "bottom"):
+        om.set(side, str(getattr(ln.out_margin, side)))
 
 
 def _write_table(run_el, table, state):
