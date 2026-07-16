@@ -1,6 +1,7 @@
 """Serialize an OWPML Header to Contents/header.xml."""
 from lxml import etree
 from ..constants import NS, XML_DECL
+from .model import BeginNum, CompatDocument
 
 _NSMAP = {k: v for k, v in NS.items()}
 
@@ -35,6 +36,16 @@ def header_xml(header, sec_cnt=1):
     root = etree.Element(_hh("head"), nsmap=_NSMAP)
     root.set("version", "1.5")
     root.set("secCnt", str(sec_cnt))
+
+    bn = header.begin_num or BeginNum()
+    be = etree.SubElement(root, _hh("beginNum"))
+    be.set("page", str(bn.page))
+    be.set("footnote", str(bn.footnote))
+    be.set("endnote", str(bn.endnote))
+    be.set("pic", str(bn.pic))
+    be.set("tbl", str(bn.tbl))
+    be.set("equation", str(bn.equation))
+
     ref = etree.SubElement(root, _hh("refList"))
 
     fonts_el = etree.SubElement(ref, _hh("fontfaces"))
@@ -230,5 +241,17 @@ def header_xml(header, sec_cnt=1):
         styles_el.set("itemCnt", "1")
         style_el = etree.SubElement(styles_el, _hh("style"))
         style_el.set("id", "0")
+
+    compat = header.compat or CompatDocument()
+    cd = etree.SubElement(root, _hh("compatibleDocument"))
+    cd.set("targetProgram", compat.target_program)
+    etree.SubElement(cd, _hh("layoutCompatibility"))
+    do = etree.SubElement(root, _hh("docOption"))
+    li = etree.SubElement(do, _hh("linkinfo"))
+    li.set("path", "")
+    li.set("pageInherit", "1")
+    li.set("footnoteInherit", "0")
+    tc = etree.SubElement(root, _hh("trackchageConfig"))
+    tc.set("flags", "56")
 
     return XML_DECL + etree.tostring(root, encoding="UTF-8")
