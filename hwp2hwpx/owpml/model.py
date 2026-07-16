@@ -324,6 +324,7 @@ class OwpmlDocument:
     header: Header
     sections: list
     metadata: Metadata
+    bin_items: list = field(default_factory=list)
 
 
 @dataclass
@@ -511,3 +512,80 @@ class Line:
     sz: "ShapeSz" = None
     pos: "ShapePos" = None
     out_margin: "ShapeOutMargin" = None
+
+
+@dataclass
+class Img:
+    bin_item_id: str = "image0"
+    bright: int = 0
+    contrast: int = 0
+    effect: str = "REAL_PIC"
+    alpha: int = 0
+
+
+@dataclass
+class ImgRect:
+    pt0: "Pt" = None
+    pt1: "Pt" = None
+    pt2: "Pt" = None
+    pt3: "Pt" = None
+
+
+@dataclass
+class ImgClip:
+    left: int = 0
+    right: int = 0
+    top: int = 0
+    bottom: int = 0
+
+
+@dataclass
+class InMargin:
+    left: int = 0
+    right: int = 0
+    top: int = 0
+    bottom: int = 0
+
+
+@dataclass
+class ImgDim:
+    dim_width: int = 0
+    dim_height: int = 0
+
+
+@dataclass
+class ShapeComment:
+    text: str = ""
+
+
+@dataclass
+class Pic:
+    id: int = 0
+    z_order: int = 0
+    text_wrap: str = "TOP_AND_BOTTOM"
+    text_flow: str = "BOTH_SIDES"
+    instid: int = 0
+    reverse: int = 0
+    offset: "Offset" = None
+    org_sz: "OrgSz" = None
+    cur_sz: "CurSz" = None
+    flip: "Flip" = None
+    rotation_info: "RotationInfo" = None
+    rendering_info: "RenderingInfo" = None
+    img: "Img" = None
+    img_rect: "ImgRect" = None
+    img_clip: "ImgClip" = None
+    in_margin: "InMargin" = None
+    img_dim: "ImgDim" = None
+    sz: "ShapeSz" = None
+    pos: "ShapePos" = None
+    out_margin: "ShapeOutMargin" = None
+    shape_comment: "ShapeComment" = None
+
+
+@dataclass
+class BinItem:
+    id: str = ""
+    filename: str = ""
+    media_type: str = "application/octet-stream"
+    data: bytes = b""

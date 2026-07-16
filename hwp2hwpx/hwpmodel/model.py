@@ -313,6 +313,19 @@ class HwpLineShape:
 
 
 @dataclass
+class HwpPicture:
+    instance_id: int = 0
+    bindata_id: int = 0
+    img_rect: list = field(default_factory=lambda: [(0, 0), (0, 0), (0, 0), (0, 0)])
+    img_clip: tuple = (0, 0, 0, 0)   # left, right, top, bottom
+    brightness: int = 0
+    contrast: int = 0
+    effect: int = 0
+    dim_width: int = 0
+    dim_height: int = 0
+
+
+@dataclass
 class HwpDrawing:
     kind: str = "line"
     instance_id: int = 0
@@ -336,3 +349,4 @@ class HwpDrawing:
     height_relto: str = "absolute"
     component: "HwpShapeComponent" = None
     line: "HwpLineShape" = None
+    picture: "HwpPicture" = None
