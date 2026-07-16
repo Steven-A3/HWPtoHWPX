@@ -178,6 +178,21 @@ class HwpSectionDef:
 
 
 @dataclass
+class HwpDocProperties:
+    page_start: int = 1
+    footnote_start: int = 1
+    endnote_start: int = 1
+    pic_start: int = 1
+    tbl_start: int = 1
+    equation_start: int = 1
+
+
+@dataclass
+class HwpCompatDocument:
+    target: int = 0
+
+
+@dataclass
 class HwpDocInfo:
     fonts: list = field(default_factory=list)
     char_shapes: list = field(default_factory=list)
@@ -185,6 +200,8 @@ class HwpDocInfo:
     border_fills: list = field(default_factory=list)
     styles: list = field(default_factory=list)
     tab_defs: list = field(default_factory=list)
+    doc_properties: "HwpDocProperties" = None
+    compat: "HwpCompatDocument" = None
 
 
 @dataclass

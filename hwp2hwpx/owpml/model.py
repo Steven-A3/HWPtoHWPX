@@ -298,6 +298,21 @@ class Para:
 
 
 @dataclass
+class BeginNum:
+    page: int = 1
+    footnote: int = 1
+    endnote: int = 1
+    pic: int = 1
+    tbl: int = 1
+    equation: int = 1
+
+
+@dataclass
+class CompatDocument:
+    target_program: str = "HWP201X"
+
+
+@dataclass
 class Header:
     fonts_by_lang: dict = field(default_factory=dict)
     char_prs: list = field(default_factory=list)
@@ -305,6 +320,8 @@ class Header:
     border_fills: list = field(default_factory=list)
     styles: list = field(default_factory=list)
     tab_defs: list = field(default_factory=list)
+    begin_num: "BeginNum" = None
+    compat: "CompatDocument" = None
 
 
 @dataclass
