@@ -92,6 +92,13 @@ class HwpTabDef:
 
 
 @dataclass
+class HwpRangeTag:
+    start: int = 0
+    end: int = 0
+    color: str = "#FFFFFF"
+
+
+@dataclass
 class HwpPageDef:
     width: int = 0
     height: int = 0
@@ -240,6 +247,7 @@ class HwpParagraph:
     style_id: int = 0
     runs: list = field(default_factory=list)
     line_segs: list = field(default_factory=list)
+    markpens: list = field(default_factory=list)
 
 
 @dataclass

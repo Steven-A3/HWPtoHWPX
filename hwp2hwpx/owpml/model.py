@@ -268,6 +268,16 @@ class Control:
 
 
 @dataclass
+class MarkpenBegin:
+    color: str = "#FFFFFF"
+
+
+@dataclass
+class MarkpenEnd:
+    pass
+
+
+@dataclass
 class LineSeg:
     text_pos: int = 0
     vert_pos: int = 0
