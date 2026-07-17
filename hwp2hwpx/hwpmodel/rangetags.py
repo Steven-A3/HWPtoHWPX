@@ -26,8 +26,11 @@ def _dfs_paragraphs(paragraphs):
 
 
 def extract_markpens(hwp_path):
-    """One dict per bodytext section: {dfs_para_index: [HwpRangeTag, ...]}.
-    kind==2 only. Returns [] on any read failure (fail-safe)."""
+    """One (buckets, binmodel_para_count) pair per bodytext section, where
+    buckets is {dfs_para_index: [HwpRangeTag, ...]} and binmodel_para_count is
+    the total count of binmodel `Paragraph` records seen in that section (used
+    by attach_range_tags for a per-section count-equality guard). kind==2 only.
+    Returns [] on any read failure (fail-safe)."""
     try:
         from hwp5.xmlmodel import Hwp5File
         f = Hwp5File(hwp_path)
@@ -53,7 +56,7 @@ def extract_markpens(hwp_path):
                                 color="#%06X" % tag.data))
                     if spans:
                         buckets.setdefault(para_idx, []).extend(spans)
-            out.append(buckets)
+            out.append((buckets, para_idx + 1))
     except Exception:
         return []
     return out
@@ -61,16 +64,19 @@ def extract_markpens(hwp_path):
 
 def attach_range_tags(hwp_path, hwp_doc):
     """Attach kind==2 range tags to hwp_doc paragraphs by DFS index. Fail-safe:
-    on any error, or a per-section paragraph-count mismatch, that section's
-    paragraphs keep empty `markpens` rather than risk mis-assignment."""
+    on any error, or a per-section paragraph-count mismatch between the
+    binmodel `Paragraph` record count and the parsed-tree DFS paragraph count,
+    that section's paragraphs keep empty `markpens` rather than risk
+    mis-assignment (e.g. from binmodel-only nested paragraphs emitted by
+    header/footer/footnote/endnote/textbox controls)."""
     sections_buckets = extract_markpens(hwp_path)
     if not sections_buckets:
         return
-    for sec, buckets in zip(hwp_doc.sections, sections_buckets):
+    for sec, (buckets, bin_para_count) in zip(hwp_doc.sections, sections_buckets):
         flat = list(_dfs_paragraphs(sec.paragraphs))
         if not buckets:
             continue
-        if max(buckets) >= len(flat):
-            continue  # count/index mismatch -> skip this section, fail-safe
+        if bin_para_count != len(flat):
+            continue  # count mismatch -> skip this section, fail-safe
         for idx, spans in buckets.items():
             flat[idx].markpens = list(spans)
