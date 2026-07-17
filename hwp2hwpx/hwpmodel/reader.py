@@ -502,6 +502,13 @@ def parse_paragraph(para_el):
             pending_ctrls.append(_parse_page_hide(child))
             markpen_unsafe = True   # extended control occupies char positions
     flush()
+    if pending_ctrls:
+        # PageHide(s) with no following text run (e.g. an otherwise-empty
+        # paragraph): Hancom emits a ctrl-only run carrying the paragraph-mark
+        # char shape. Attach the leftover ctrls to such a run.
+        runs.append(HwpRun(char_shape_id=break_cs if break_cs is not None else 0,
+                           contents=[], ctrls=pending_ctrls))
+        pending_ctrls = []
     last_cs = None
     for run in runs:
         if run.contents:

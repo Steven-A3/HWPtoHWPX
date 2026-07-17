@@ -57,3 +57,17 @@ def test_sample3_has_two_pagehides_attached():
                         for cell in row.cells:
                             yield from walk(cell.paragraphs)
     assert sum(walk(doc.sections[0].paragraphs)) == 2
+
+
+def test_pagehide_with_no_text_becomes_ctrl_only_run():
+    # A PageHide in an otherwise-empty paragraph (PageHide then paragraph break,
+    # no text) must still emit: Hancom writes a ctrl-only run carrying the
+    # paragraph-mark char shape. The flush()-based attach can't place it (no
+    # content run), so parse_paragraph appends a dedicated ctrl-only run.
+    p = _para('<PageHide pagenumber="1"/>'
+              '<ControlChar name="PARAGRAPH_BREAK" charshape-id="34" code="13" kind="CHAR"/>')
+    ctrl_runs = [r for r in p.runs if r.ctrls]
+    assert len(ctrl_runs) == 1
+    assert ctrl_runs[0].contents == []
+    assert ctrl_runs[0].char_shape_id == 34
+    assert ctrl_runs[0].ctrls[0].hide_page_num == 1
