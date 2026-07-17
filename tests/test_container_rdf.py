@@ -27,3 +27,35 @@ def test_container_xml_has_rdf_rootfile():
 def test_container_rdf_all_samples():
     for n in ("3.", "4.", "2013"):
         assert "META-INF/container.rdf" in _out(n)
+
+
+def test_container_rdf_byte_equals_reference():
+    for n in ("3.", "4.", "2013"):
+        hwp = glob.glob("samples/%s*.hwp" % n)[0]
+        ref = glob.glob("samples/%s*.hwpx" % n)[0]
+        out = tempfile.mktemp(suffix=".hwpx")
+        convert(hwp, out)
+        got = unzip_parts(out)["META-INF/container.rdf"]
+        want = unzip_parts(ref)["META-INF/container.rdf"]
+        assert got == want, "container.rdf mismatch for sample %s" % n
+
+
+def test_container_xml_byte_equals_reference():
+    for n in ("3.", "4.", "2013"):
+        hwp = glob.glob("samples/%s*.hwp" % n)[0]
+        ref = glob.glob("samples/%s*.hwpx" % n)[0]
+        out = tempfile.mktemp(suffix=".hwpx")
+        convert(hwp, out)
+        got = unzip_parts(out)["META-INF/container.xml"]
+        want = unzip_parts(ref)["META-INF/container.xml"]
+        assert got == want, "container.xml mismatch for sample %s" % n
+
+
+def test_container_rdf_multi_section_unit():
+    from hwp2hwpx.owpml.package_parts import container_rdf
+
+    rdf = container_rdf(2).decode("utf-8")
+    assert 'rdf:about="Contents/section0.xml"' in rdf
+    assert 'rdf:about="Contents/section1.xml"' in rdf
+    assert rdf.count("#SectionFile") == 2
+    assert rdf.count("#Document") == 1
