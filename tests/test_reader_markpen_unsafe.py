@@ -1,8 +1,8 @@
 """Reader-side guard for markpen char-offset safety.
 
 HWP range-tag positions index the raw paragraph WCHAR stream, where TAB and
-extended controls (TITLE_MARK, field/bookmark/etc.) occupy 8 stream
-positions (or are dropped entirely), and non-BMP text characters occupy two
+extended controls (field/bookmark/newNum/etc.) occupy 8 stream positions (or
+are dropped entirely), and non-BMP text characters occupy two
 UTF-16 code units. The mapper (hwp2hwpx/mapper/markpen.py) counts every
 Control as width 1 and text with Python len() (code points), so it cannot
 reproduce the HWP offset basis for such paragraphs. The reader flags these
@@ -38,12 +38,16 @@ def test_tab_control_marks_paragraph_unsafe():
     assert p.markpen_unsafe is True
 
 
-def test_title_mark_control_marks_paragraph_unsafe():
-    para = _para('<ControlChar char="?" charshape-id="0" code="24" '
-                 'kind="EXTENDED" name="TITLE_MARK"/>'
+def test_title_mark_control_is_safe_width_one():
+    # The real TITLE_MARK in the samples is code=8 kind=INLINE -- a single
+    # WCHAR -- and the reader maps it to a width-1 titleMark control, so the
+    # paragraph's char-offset basis stays reproducible (markpen-safe).
+    para = _para('<ControlChar char="?" charshape-id="0" code="8" '
+                 'kind="INLINE" name="TITLE_MARK"/>'
                  '<Text charshape-id="0">title</Text>')
     p = parse_paragraph(para)
-    assert p.markpen_unsafe is True
+    assert p.markpen_unsafe is False
+    assert p.runs[0].contents[0].kind == "titleMark"
 
 
 def test_non_bmp_text_marks_paragraph_unsafe():

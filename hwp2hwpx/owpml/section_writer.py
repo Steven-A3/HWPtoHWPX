@@ -1,7 +1,9 @@
 """Serialize an OWPML Section to Contents/sectionN.xml."""
 from lxml import etree
 from ..constants import NS, XML_DECL
-from ..owpml.model import Control, Pic, MarkpenBegin, MarkpenEnd, PageHiding
+from ..owpml.model import (
+    Control, Pic, MarkpenBegin, MarkpenEnd, PageHiding, Bookmark, NewNum,
+)
 
 _NSMAP = {k: v for k, v in NS.items()}
 
@@ -31,11 +33,10 @@ def _run_has_inline_object(run):
     return False
 
 
-def _write_run(p_el, run, state):
-    r = etree.SubElement(p_el, _hp("run"))
-    r.set("charPrIDRef", str(run.char_pr_id))
-    for c in getattr(run, "ctrls", ()):
-        ctrl = etree.SubElement(r, _hp("ctrl"))
+def _write_ctrl(run_el, c):
+    """Emit one <hp:ctrl> wrapping a single control (pageHiding/bookmark/newNum)."""
+    ctrl = etree.SubElement(run_el, _hp("ctrl"))
+    if isinstance(c, PageHiding):
         ph = etree.SubElement(ctrl, _hp("pageHiding"))
         ph.set("hideHeader", str(c.hide_header))
         ph.set("hideFooter", str(c.hide_footer))
@@ -43,6 +44,19 @@ def _write_run(p_el, run, state):
         ph.set("hideBorder", str(c.hide_border))
         ph.set("hideFill", str(c.hide_fill))
         ph.set("hidePageNum", str(c.hide_page_num))
+    elif isinstance(c, Bookmark):
+        etree.SubElement(ctrl, _hp("bookmark")).set("name", c.name)
+    elif isinstance(c, NewNum):
+        nn = etree.SubElement(ctrl, _hp("newNum"))
+        nn.set("num", str(c.num))
+        nn.set("numType", c.num_type)
+
+
+def _write_run(p_el, run, state):
+    r = etree.SubElement(p_el, _hp("run"))
+    r.set("charPrIDRef", str(run.char_pr_id))
+    for c in getattr(run, "ctrls", ()):
+        _write_ctrl(r, c)
     if run.texts:
         te = etree.SubElement(r, _hp("t"))
         last = None  # last inline child; text after it goes to its .tail
@@ -53,6 +67,8 @@ def _write_run(p_el, run, state):
                     last.set("width", "0")
                     last.set("leader", "0")
                     last.set("type", "0")
+                elif item.kind == "titleMark":
+                    last.set("ignore", "1")
             elif isinstance(item, MarkpenBegin):
                 last = etree.SubElement(te, _hp("markpenBegin"))
                 last.set("color", item.color)
@@ -73,6 +89,9 @@ def _write_run(p_el, run, state):
     if _run_has_inline_object(run):
         # inline object anchor: Hancom writes a trailing empty <hp:t/> here.
         etree.SubElement(r, _hp("t"))
+    for c in getattr(run, "ctrls_after", ()):
+        # trailing ctrls (e.g. bookmark) sit after the run's <hp:t>.
+        _write_ctrl(r, c)
 
 
 def _write_sec_pr(run_el, sp):

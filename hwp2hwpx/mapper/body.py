@@ -1,8 +1,9 @@
 """Map a whole HwpDocument to an OwpmlDocument."""
 from ..owpml.model import (
     OwpmlDocument, Header, Section, Para, Run, Text, Metadata, Control, LineSeg,
-    PageHiding,
+    PageHiding, Bookmark, NewNum,
 )
+from ..hwpmodel.model import HwpPageHide, HwpBookmark, HwpNewNumbering
 from .fonts import map_fonts
 from .char_pr import map_char_shapes
 from .para_pr import map_para_shapes
@@ -28,10 +29,15 @@ def _map_contents(contents):
 def _map_ctrls(ctrls):
     out = []
     for c in ctrls:
-        out.append(PageHiding(
-            hide_header=c.hide_header, hide_footer=c.hide_footer,
-            hide_master_page=c.hide_master_page, hide_border=c.hide_border,
-            hide_fill=c.hide_fill, hide_page_num=c.hide_page_num))
+        if isinstance(c, HwpPageHide):
+            out.append(PageHiding(
+                hide_header=c.hide_header, hide_footer=c.hide_footer,
+                hide_master_page=c.hide_master_page, hide_border=c.hide_border,
+                hide_fill=c.hide_fill, hide_page_num=c.hide_page_num))
+        elif isinstance(c, HwpBookmark):
+            out.append(Bookmark(name=c.name))
+        elif isinstance(c, HwpNewNumbering):
+            out.append(NewNum(num=c.num, num_type=c.num_type))
     return out
 
 
@@ -52,16 +58,19 @@ def map_paragraph(hpar, para_id):
             from .table import map_table
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
                             table=map_table(r.table),
-                            ctrls=_map_ctrls(r.ctrls)))
+                            ctrls=_map_ctrls(r.ctrls),
+                            ctrls_after=_map_ctrls(r.ctrls_after)))
         elif getattr(r, "drawing", None) is not None:
             from .drawing import map_drawing
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
                             drawing=map_drawing(r.drawing),
-                            ctrls=_map_ctrls(r.ctrls)))
+                            ctrls=_map_ctrls(r.ctrls),
+                            ctrls_after=_map_ctrls(r.ctrls_after)))
         else:
             runs.append(Run(char_pr_id=r.char_shape_id,
                             texts=_map_contents(r.contents),
-                            ctrls=_map_ctrls(r.ctrls)))
+                            ctrls=_map_ctrls(r.ctrls),
+                            ctrls_after=_map_ctrls(r.ctrls_after)))
     if not runs:
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]

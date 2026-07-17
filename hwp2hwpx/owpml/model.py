@@ -279,6 +279,17 @@ class PageHiding:
 
 
 @dataclass
+class Bookmark:
+    name: str = ""
+
+
+@dataclass
+class NewNum:
+    num: int = 1
+    num_type: str = "PAGE"
+
+
+@dataclass
 class MarkpenBegin:
     color: str = "#FFFFFF"
 
@@ -308,6 +319,7 @@ class Run:
     table: "Table" = None
     drawing: "Line" = None
     ctrls: list = field(default_factory=list)
+    ctrls_after: list = field(default_factory=list)
 
 
 @dataclass

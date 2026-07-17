@@ -47,11 +47,14 @@ def test_mapper_maps_ctrls():
 
 
 def test_sample3_has_two_pagehides_attached():
+    from hwp2hwpx.hwpmodel.model import HwpPageHide
     doc = read_document(hwp5_xml(glob.glob("samples/3.*.hwp")[0]))
     def walk(paras):
         for p in paras:
             for run in p.runs:
-                yield len(run.ctrls)
+                # count only PageHide ctrls -- run.ctrls also carries other
+                # inline controls now (e.g. a leading newNum on a table run).
+                yield sum(1 for c in run.ctrls if isinstance(c, HwpPageHide))
                 if run.table is not None:
                     for row in run.table.table_rows:
                         for cell in row.cells:

@@ -36,11 +36,12 @@ def test_section_match_rises_sample4(tmp_path):
 
 
 def test_sample3_section_unchanged(tmp_path):
-    # Sample 3 has no markpen. Baseline refreshed for the pageHiding milestone
-    # (adds 2 <hp:ctrl><hp:pageHiding/></hp:ctrl>): len 497083, sha256 2bc6ff4040ce06d5.
+    # Sample 3 has no markpen. Baseline refreshed for the inline-ctrls milestone
+    # (adds <hp:bookmark> after its text and <hp:newNum> before a table, +2
+    # <hp:ctrl> wrappers): len 497202, sha256 692ee507e50aa8fd.
     out = tmp_path / "s3.hwpx"
     convert(S3, str(out))
     body = unzip_parts(str(out))["Contents/section0.xml"]
     import hashlib
-    assert len(body) == 497083
-    assert hashlib.sha256(body).hexdigest().startswith("2bc6ff4040ce06d5")
+    assert len(body) == 497202
+    assert hashlib.sha256(body).hexdigest().startswith("692ee507e50aa8fd")

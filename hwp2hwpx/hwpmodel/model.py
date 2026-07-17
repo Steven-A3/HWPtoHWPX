@@ -228,12 +228,24 @@ class HwpPageHide:
 
 
 @dataclass
+class HwpBookmark:
+    name: str = ""
+
+
+@dataclass
+class HwpNewNumbering:
+    num: int = 1
+    num_type: str = "PAGE"
+
+
+@dataclass
 class HwpRun:
     char_shape_id: int
     contents: list = field(default_factory=list)
     table: "HwpTable" = None
     drawing: "HwpDrawing" = None
     ctrls: list = field(default_factory=list)
+    ctrls_after: list = field(default_factory=list)
 
     @property
     def text(self):

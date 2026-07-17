@@ -11,6 +11,7 @@ from .model import (
     HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
     HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing, HwpPicture,
     HwpDocProperties, HwpCompatDocument, HwpPageHide,
+    HwpBookmark, HwpNewNumbering,
 )
 
 _ALIGN_MAP = {
@@ -285,14 +286,17 @@ def _parse_table(tc_el):
     )
 
 
-_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak", "TAB": "tab"}
+_CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak",
+                 "TAB": "tab", "TITLE_MARK": "titleMark"}
 
 # ControlChar names whose HWP WCHAR-stream width is exactly 1 (matches the
-# mapper's per-item width accounting). Any other control char -- TAB (width
-# 8), TITLE_MARK, field/bookmark/etc. (width 8, or dropped/width 0 by the
-# reader) -- makes the paragraph's char-offset basis unreproducible by the
-# mapper, so markpen attachment must be skipped for it (see markpen_unsafe).
-_MARKPEN_SAFE_CONTROL_NAMES = {"LINE_BREAK", "FIXWIDTH_SPACE", "PARAGRAPH_BREAK"}
+# mapper's per-item width accounting). TITLE_MARK is code=8 kind=INLINE, a
+# single WCHAR, so it is width-1 safe. Any other control char -- TAB (width
+# 8), field/bookmark/etc. (width 8, or dropped/width 0 by the reader) --
+# makes the paragraph's char-offset basis unreproducible by the mapper, so
+# markpen attachment must be skipped for it (see markpen_unsafe).
+_MARKPEN_SAFE_CONTROL_NAMES = {"LINE_BREAK", "FIXWIDTH_SPACE",
+                               "PARAGRAPH_BREAK", "TITLE_MARK"}
 
 
 def _hex_int(v):
@@ -446,16 +450,27 @@ def parse_paragraph(para_el):
     cur_contents = []
     markpen_unsafe = False
     break_cs = None
-    pending_ctrls = []
+    pending_ctrls = []       # leading ctrls for the next run (before <hp:t>)
+    cur_trailing_ctrls = []  # trailing ctrls for the current run (after <hp:t>)
 
     def flush():
-        nonlocal cur_cs, cur_contents, pending_ctrls
+        nonlocal cur_cs, cur_contents, pending_ctrls, cur_trailing_ctrls
         if cur_contents:
             runs.append(HwpRun(char_shape_id=cur_cs, contents=cur_contents,
-                               ctrls=pending_ctrls))
+                               ctrls=pending_ctrls, ctrls_after=cur_trailing_ctrls))
             pending_ctrls = []
+            cur_trailing_ctrls = []
         cur_cs = None
         cur_contents = []
+
+    def attach_ctrl(ctrl):
+        # An extended control met with pending text trails the current run;
+        # met with none, it leads the next run. Reproduces Hancom's placement
+        # (bookmark after its text, newNum before the following object).
+        if cur_contents:
+            cur_trailing_ctrls.append(ctrl)
+        else:
+            pending_ctrls.append(ctrl)
 
     for child in para_el.findall("LineSeg/*"):
         if child.tag == "Text":
@@ -489,7 +504,9 @@ def parse_paragraph(para_el):
                 char_shape_id=_int(child.get("charshape-id")),
                 contents=[],
                 table=_parse_table(child),
+                ctrls=pending_ctrls,
             ))
+            pending_ctrls = []
         elif child.tag == "GShapeObjectControl":
             drawing = _parse_drawing(child)
             if drawing is not None:
@@ -498,7 +515,15 @@ def parse_paragraph(para_el):
                     char_shape_id=_int(child.get("charshape-id")),
                     contents=[],
                     drawing=drawing,
+                    ctrls=pending_ctrls,
                 ))
+                pending_ctrls = []
+        elif child.tag == "BookmarkControl":
+            attach_ctrl(_parse_bookmark(child))
+            markpen_unsafe = True   # extended control occupies char positions
+        elif child.tag == "NewNumbering":
+            attach_ctrl(_parse_new_numbering(child))
+            markpen_unsafe = True   # extended control occupies char positions
         elif child.tag == "PageHide":
             pending_ctrls.append(_parse_page_hide(child))
             markpen_unsafe = True   # extended control occupies char positions
@@ -620,6 +645,28 @@ def _parse_page_hide(el):
         hide_border=_int(el.get("pageborder")),
         hide_fill=_int(el.get("pagefill")),
         hide_page_num=_int(el.get("pagenumber")),
+    )
+
+
+def _parse_bookmark(el):
+    """<BookmarkControl><BookmarkControlData name="..."/></BookmarkControl>."""
+    data = el.find("BookmarkControlData")
+    name = data.get("name") if data is not None else el.get("name")
+    return HwpBookmark(name=name or "")
+
+
+# HWP NewNumbering @kind -> OWPML hp:newNum @numType. Only "page" occurs in the
+# samples; other kinds map by upper-casing, with PAGE as the fallback.
+_NEW_NUM_TYPE = {"page": "PAGE", "figure": "FIGURE", "picture": "PICTURE",
+                 "table": "TABLE", "equation": "EQUATION"}
+
+
+def _parse_new_numbering(el):
+    """<NewNumbering kind="page" number="1"/> -> HwpNewNumbering."""
+    kind = (el.get("kind") or "page").lower()
+    return HwpNewNumbering(
+        num=_int(el.get("number")) or 1,
+        num_type=_NEW_NUM_TYPE.get(kind, kind.upper() or "PAGE"),
     )
 
 
