@@ -248,6 +248,7 @@ class HwpParagraph:
     runs: list = field(default_factory=list)
     line_segs: list = field(default_factory=list)
     markpens: list = field(default_factory=list)
+    markpen_unsafe: bool = False
 
 
 @dataclass

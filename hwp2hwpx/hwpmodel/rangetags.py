@@ -79,4 +79,8 @@ def attach_range_tags(hwp_path, hwp_doc):
         if bin_para_count != len(flat):
             continue  # count mismatch -> skip this section, fail-safe
         for idx, spans in buckets.items():
+            if idx < 0:
+                continue  # defensive: a range tag before the first Paragraph record
+            if getattr(flat[idx], "markpen_unsafe", False):
+                continue  # fail-safe: char-offset basis unreproducible by the mapper
             flat[idx].markpens = list(spans)

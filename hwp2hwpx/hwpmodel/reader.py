@@ -286,6 +286,13 @@ def _parse_table(tc_el):
 
 _CONTROL_KIND = {"FIXWIDTH_SPACE": "fwSpace", "LINE_BREAK": "lineBreak", "TAB": "tab"}
 
+# ControlChar names whose HWP WCHAR-stream width is exactly 1 (matches the
+# mapper's per-item width accounting). Any other control char -- TAB (width
+# 8), TITLE_MARK, field/bookmark/etc. (width 8, or dropped/width 0 by the
+# reader) -- makes the paragraph's char-offset basis unreproducible by the
+# mapper, so markpen attachment must be skipped for it (see markpen_unsafe).
+_MARKPEN_SAFE_CONTROL_NAMES = {"LINE_BREAK", "FIXWIDTH_SPACE", "PARAGRAPH_BREAK"}
+
 
 def _hex_int(v):
     try:
@@ -433,6 +440,7 @@ def parse_paragraph(para_el):
     runs = []
     cur_cs = None
     cur_contents = []
+    markpen_unsafe = False
 
     def flush():
         nonlocal cur_cs, cur_contents
@@ -446,12 +454,16 @@ def parse_paragraph(para_el):
             content = child.text or ""
             if not content:
                 continue
+            if any(ord(ch) > 0xFFFF for ch in content):
+                markpen_unsafe = True
             cs = _int(child.get("charshape-id"))
             if cur_contents and cs != cur_cs:
                 flush()
             cur_cs = cs
             cur_contents.append(content)
         elif child.tag == "ControlChar":
+            if child.get("name") not in _MARKPEN_SAFE_CONTROL_NAMES:
+                markpen_unsafe = True
             kind = _CONTROL_KIND.get(child.get("name"))
             if kind is None:
                 continue  # PARAGRAPH_BREAK and any other control chars
@@ -482,6 +494,7 @@ def parse_paragraph(para_el):
         style_id=_int(para_el.get("style-id")),
         runs=runs,
         line_segs=_parse_line_segs(para_el),
+        markpen_unsafe=markpen_unsafe,
     )
 
 

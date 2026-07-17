@@ -51,12 +51,14 @@ def test_end_at_run_boundary_trails_preceding_run():
     assert _render(runs) == ["a<B #FFFFFF>bc<E>", "def"]
 
 
-def test_control_counts_as_width_one():
-    # "ab" <tab> "cd"; the control is width 1, so offset 3 is the start of "cd".
-    # Span [3:5] therefore highlights the whole "cd": begin leads it, end trails.
-    runs = [Run(char_pr_id=1, texts=[Text("ab"), Control("tab"), Text("cd")])]
+def test_size_one_control_counts_as_width_one():
+    # "ab" <fwSpace> "cd"; fwSpace is a genuinely width-1 control (the reader
+    # never flags paragraphs containing it as markpen_unsafe), so offset 3 is
+    # the start of "cd". Span [3:5] therefore highlights the whole "cd":
+    # begin leads it, end trails.
+    runs = [Run(char_pr_id=1, texts=[Text("ab"), Control("fwSpace"), Text("cd")])]
     apply_markpens(runs, [HwpRangeTag(3, 5, "#FFFFFF")])
-    assert _render(runs) == ["ab<c tab><B #FFFFFF>cd<E>"]
+    assert _render(runs) == ["ab<c fwSpace><B #FFFFFF>cd<E>"]
 
 
 def test_skips_paragraph_with_table_or_drawing_run():
