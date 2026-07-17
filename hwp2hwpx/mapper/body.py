@@ -10,6 +10,7 @@ from .style import map_styles
 from .tab import map_tab_defs
 from .section import map_section_def
 from .docsettings import map_begin_num, map_compat
+from .markpen import apply_markpens
 
 
 def _map_contents(contents):
@@ -50,6 +51,7 @@ def map_paragraph(hpar, para_id):
     if not runs:
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]
+    apply_markpens(runs, getattr(hpar, "markpens", []))
     return Para(id=para_id, para_pr_id=hpar.para_shape_id,
                 style_id=hpar.style_id, runs=runs,
                 line_segs=_map_line_segs(hpar.line_segs))
