@@ -10,6 +10,7 @@ from .para_pr import map_para_shapes
 from .border_fill import map_border_fills
 from .style import map_styles
 from .tab import map_tab_defs
+from .bullet import map_bullets
 from .section import map_section_def
 from .docsettings import map_begin_num, map_compat
 from .markpen import apply_markpens
@@ -89,6 +90,7 @@ def map_document(hwp_doc, title=""):
         border_fills=map_border_fills(di.border_fills),
         styles=map_styles(di.styles),
         tab_defs=map_tab_defs(di.tab_defs),
+        bullets=map_bullets(di.bullets),
         begin_num=map_begin_num(di.doc_properties),
         compat=map_compat(di.compat),
     )

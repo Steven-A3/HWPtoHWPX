@@ -183,6 +183,28 @@ def header_xml(header, sec_cnt=1):
         tab_el.set("autoTabLeft", "0")
         tab_el.set("autoTabRight", "0")
 
+    # Hancom omits <hh:bullets> entirely when the document defines no bullets
+    # (sample 4), rather than emitting an empty itemCnt="0" container.
+    if header.bullets:
+        bullets_el = etree.SubElement(ref, _hh("bullets"))
+        bullets_el.set("itemCnt", str(len(header.bullets)))
+        for b in header.bullets:
+            be = etree.SubElement(bullets_el, _hh("bullet"))
+            be.set("id", str(b.id))
+            be.set("char", b.char)
+            be.set("useImage", str(b.use_image))
+            ph = etree.SubElement(be, _hh("paraHead"))
+            ph.set("level", "0")
+            ph.set("align", b.align)
+            ph.set("useInstWidth", "0")
+            ph.set("autoIndent", str(b.auto_indent))
+            ph.set("widthAdjust", str(b.width_adjust))
+            ph.set("textOffsetType", "PERCENT")
+            ph.set("textOffset", str(b.text_offset))
+            ph.set("numFormat", "DIGIT")
+            ph.set("charPrIDRef", str(b.char_pr_id))
+            ph.set("checkable", "0")
+
     pps = etree.SubElement(ref, _hh("paraProperties"))
     pps.set("itemCnt", str(len(header.para_prs)))
     for pp in header.para_prs:

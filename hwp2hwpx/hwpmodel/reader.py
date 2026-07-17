@@ -11,7 +11,7 @@ from .model import (
     HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
     HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing, HwpPicture,
     HwpDocProperties, HwpCompatDocument, HwpPageHide,
-    HwpBookmark, HwpNewNumbering,
+    HwpBookmark, HwpNewNumbering, HwpBullet,
 )
 
 _ALIGN_MAP = {
@@ -165,6 +165,20 @@ def _parse_tab_defs(id_mappings):
     return out
 
 
+def _parse_bullets(id_mappings):
+    out = []
+    for el in id_mappings.findall("Bullet"):
+        out.append(HwpBullet(
+            char=el.get("char") or "-",
+            align=(el.get("align") or "left").lower(),
+            auto_indent=_int(el.get("auto-indent")),
+            text_offset=_int(el.get("space")),
+            width_adjust=_int(el.get("width")),
+            char_shape_id=_int(el.get("charshape-id"), -1),
+        ))
+    return out
+
+
 def _parse_doc_properties(root):
     el = root.find(".//DocumentProperties")
     if el is None:
@@ -250,6 +264,7 @@ def read_docinfo(xml_bytes):
                       border_fills=_parse_border_fills(id_mappings),
                       styles=_parse_styles(id_mappings),
                       tab_defs=_parse_tab_defs(id_mappings),
+                      bullets=_parse_bullets(id_mappings),
                       doc_properties=_parse_doc_properties(root),
                       compat=_parse_compat(root))
 

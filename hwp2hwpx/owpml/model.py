@@ -98,6 +98,18 @@ class TabDef:
 
 
 @dataclass
+class Bullet:
+    id: int = 1
+    char: str = "-"
+    use_image: int = 0
+    align: str = "LEFT"
+    auto_indent: int = 0
+    width_adjust: int = 0
+    text_offset: int = 0
+    char_pr_id: int = 4294967295
+
+
+@dataclass
 class Grid:
     line_grid: int = 0
     char_grid: int = 0
@@ -354,6 +366,7 @@ class Header:
     border_fills: list = field(default_factory=list)
     styles: list = field(default_factory=list)
     tab_defs: list = field(default_factory=list)
+    bullets: list = field(default_factory=list)
     begin_num: "BeginNum" = None
     compat: "CompatDocument" = None
 

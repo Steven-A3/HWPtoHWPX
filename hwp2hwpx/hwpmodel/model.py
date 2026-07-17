@@ -93,6 +93,16 @@ class HwpTabDef:
 
 
 @dataclass
+class HwpBullet:
+    char: str = "-"
+    align: str = "left"
+    auto_indent: int = 0
+    text_offset: int = 0
+    width_adjust: int = 0
+    char_shape_id: int = -1
+
+
+@dataclass
 class HwpRangeTag:
     start: int = 0
     end: int = 0
@@ -208,6 +218,7 @@ class HwpDocInfo:
     border_fills: list = field(default_factory=list)
     styles: list = field(default_factory=list)
     tab_defs: list = field(default_factory=list)
+    bullets: list = field(default_factory=list)
     doc_properties: "HwpDocProperties" = None
     compat: "HwpCompatDocument" = None
 
