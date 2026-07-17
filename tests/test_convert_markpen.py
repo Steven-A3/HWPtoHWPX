@@ -36,11 +36,12 @@ def test_section_match_rises_sample4(tmp_path):
 
 
 def test_sample3_section_unchanged(tmp_path):
-    # Sample 3 has no markpen; its section0.xml must be byte-identical to the
-    # pre-milestone output (captured baseline sha256 acadcafbfd08135a, len 496492).
+    # Sample 3 has no markpen. Baseline refreshed for the trailing-empty-run
+    # milestone (adds ~4 paragraph-mark empty runs): sha256 646b4403cb367cda,
+    # len 496596. This still guards that markpen itself makes no further change.
     out = tmp_path / "s3.hwpx"
     convert(S3, str(out))
     body = unzip_parts(str(out))["Contents/section0.xml"]
     import hashlib
-    assert len(body) == 496492
-    assert hashlib.sha256(body).hexdigest().startswith("acadcafbfd08135a")
+    assert len(body) == 496596
+    assert hashlib.sha256(body).hexdigest().startswith("646b4403cb367cda")
