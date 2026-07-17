@@ -103,5 +103,19 @@ def map_document(hwp_doc, title="", bin_index=None):
             para_id += 1
         sections.append(Section(paras=paras,
                                 sec_pr=map_section_def(getattr(hsec, "sec_def", None))))
-    return OwpmlDocument(header=header, sections=sections,
-                         metadata=Metadata(title=title))
+    si = hwp_doc.summary_info
+    if si is not None:
+        metadata = Metadata(
+            title=si.title or title,
+            creator=si.creator,
+            subject=si.subject,
+            description=si.description,
+            last_saved_by=si.last_saved_by,
+            created_date=si.created_date,
+            modified_date=si.modified_date,
+            date=si.date,
+            keyword=si.keyword,
+        )
+    else:
+        metadata = Metadata(title=title)
+    return OwpmlDocument(header=header, sections=sections, metadata=metadata)

@@ -381,6 +381,14 @@ class Section:
 class Metadata:
     title: str = ""
     language: str = "ko"
+    creator: str = ""
+    subject: str = ""
+    description: str = ""
+    last_saved_by: str = ""
+    created_date: str = ""
+    modified_date: str = ""
+    date: str = ""
+    keyword: str = ""
 
 
 @dataclass

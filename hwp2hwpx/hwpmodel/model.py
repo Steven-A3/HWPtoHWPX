@@ -293,9 +293,23 @@ class HwpSection:
 
 
 @dataclass
+class HwpSummaryInfo:
+    title: str = ""
+    creator: str = ""
+    subject: str = ""
+    description: str = ""
+    last_saved_by: str = ""
+    created_date: str = ""
+    modified_date: str = ""
+    date: str = ""
+    keyword: str = ""
+
+
+@dataclass
 class HwpDocument:
     docinfo: HwpDocInfo
     sections: list = field(default_factory=list)
+    summary_info: "HwpSummaryInfo" = None
 
 
 @dataclass

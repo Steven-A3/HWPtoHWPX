@@ -47,9 +47,51 @@ def _esc(s):
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+_PACKAGE_NAMESPACES = (
+    'xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app"'
+    ' xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"'
+    ' xmlns:hp10="http://www.hancom.co.kr/hwpml/2016/paragraph"'
+    ' xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section"'
+    ' xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core"'
+    ' xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head"'
+    ' xmlns:hhs="http://www.hancom.co.kr/hwpml/2011/history"'
+    ' xmlns:hm="http://www.hancom.co.kr/hwpml/2011/master-page"'
+    ' xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf"'
+    ' xmlns:dc="http://purl.org/dc/elements/1.1/"'
+    ' xmlns:opf="http://www.idpf.org/2007/opf/"'
+    ' xmlns:ooxmlchart="http://www.hancom.co.kr/hwpml/2016/ooxmlchart"'
+    ' xmlns:hwpunitchar="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"'
+    ' xmlns:epub="http://www.idpf.org/2007/ops"'
+    ' xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0"'
+)
+
+# (opf:meta name, Metadata field), in emission order.
+_META_FIELDS = (
+    ("creator", "creator"),
+    ("subject", "subject"),
+    ("description", "description"),
+    ("lastsaveby", "last_saved_by"),
+    ("CreatedDate", "created_date"),
+    ("ModifiedDate", "modified_date"),
+    ("date", "date"),
+    ("keyword", "keyword"),
+)
+
+
+def _meta_block(name, value):
+    value = _esc(value)
+    if not value:
+        return '<opf:meta name="%s" content="text"/>' % name
+    return '<opf:meta name="%s" content="text">%s</opf:meta>' % (name, value)
+
+
 def content_hpf(metadata, section_count, bin_items=()):
     title = _esc(metadata.title)
     lang = _esc(metadata.language)
+    meta_blocks = "".join(
+        _meta_block(name, getattr(metadata, attr, ""))
+        for name, attr in _META_FIELDS
+    )
     items = [
         '<opf:item id="header" href="Contents/header.xml" media-type="application/xml"/>'
     ]
@@ -65,17 +107,16 @@ def content_hpf(metadata, section_count, bin_items=()):
         items.append('<opf:item id="%s" href="BinData/%s" media-type="%s" isEmbeded="1"/>'
                      % (_esc(it.id), _esc(it.filename), _esc(it.media_type)))
     body = (
-        '<opf:package xmlns:opf="http://www.idpf.org/2007/opf/"'
-        ' xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf"'
-        ' xmlns:dc="http://purl.org/dc/elements/1.1/" version="" unique-identifier="" id="">'
+        '<opf:package %s version="" unique-identifier="" id="">'
         '<opf:metadata>'
         '<opf:title>%s</opf:title>'
         '<opf:language>%s</opf:language>'
+        '%s'
         '</opf:metadata>'
         '<opf:manifest>%s</opf:manifest>'
         '<opf:spine>%s</opf:spine>'
         '</opf:package>'
-    ) % (title, lang, "".join(items), "".join(itemrefs))
+    ) % (_PACKAGE_NAMESPACES, title, lang, meta_blocks, "".join(items), "".join(itemrefs))
     return _doc(body.encode("utf-8"))
 
 
