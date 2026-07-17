@@ -13,7 +13,7 @@ def _doc(hwp):
 
 
 def test_extract_three_byte_identical_images():
-    items = extract_bin_items(S4, _doc(S4))
+    items, bin_index = extract_bin_items(S4, _doc(S4))
     assert len(items) == 3
     assert sorted(i.id for i in items) == ["image1", "image2", "image3"]
     assert all(i.media_type == "image/bmp" for i in items)
@@ -26,7 +26,7 @@ def test_extract_three_byte_identical_images():
 
 
 def test_no_pictures_no_bin_items():
-    assert extract_bin_items(S3, _doc(S3)) == []
+    assert extract_bin_items(S3, _doc(S3)) == ([], {})
 
 
 def test_extract_reaches_pic_nested_in_container():
@@ -35,10 +35,10 @@ def test_extract_reaches_pic_nested_in_container():
     bindata collector must recurse into container children or the nested
     JPEG's binaryItemIDRef="image2" dangles with no embedded file."""
     s2013 = glob.glob("samples/2013*.hwp")[0]
-    items = extract_bin_items(s2013, _doc(s2013))
+    items, bin_index = extract_bin_items(s2013, _doc(s2013))
     ids = sorted(i.id for i in items)
     assert ids == ["image1", "image2", "image3"]
-    jpeg = [i for i in items if i.id == "image2"][0]
+    jpeg = [i for i in items if i.id == "image1"][0]
     assert jpeg.media_type == "image/jpeg"
     assert jpeg.filename.endswith(".jpg")
     assert len(jpeg.data) > 0

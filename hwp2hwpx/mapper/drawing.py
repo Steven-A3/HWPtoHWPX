@@ -86,13 +86,14 @@ def _map_line(hd):
     )
 
 
-def _map_pic(hd):
+def _map_pic(hd, bin_index=None):
     comp, pic = hd.component, hd.picture
     r = pic.img_rect
+    idx = (bin_index or {}).get(pic.bindata_id, pic.bindata_id)
     return Pic(
         **_common_container(hd, comp, 1),
         instid=pic.instance_id,
-        img=Img(bin_item_id="image%d" % pic.bindata_id, bright=pic.brightness,
+        img=Img(bin_item_id="image%d" % idx, bright=pic.brightness,
                 contrast=pic.contrast, effect=_PIC_EFFECT.get(pic.effect, "REAL_PIC")),
         img_rect=ImgRect(pt0=Pt(*r[0]), pt1=Pt(*r[1]), pt2=Pt(*r[2]), pt3=Pt(*r[3])),
         img_clip=ImgClip(left=pic.img_clip[0], right=pic.img_clip[1],
@@ -103,12 +104,12 @@ def _map_pic(hd):
     )
 
 
-def _map_rect(hd):
+def _map_rect(hd, bin_index=None):
     comp, rc = hd.component, hd.rect
     dt = None
     if rc.draw_text is not None:
         sub = SubList(vert_align=rc.draw_text.vert_align,
-                      paras=[map_paragraph(p, 0) for p in rc.draw_text.paragraphs])
+                      paras=[map_paragraph(p, 0, bin_index) for p in rc.draw_text.paragraphs])
         l, r, t, b = rc.text_margin
         dt = DrawText(last_width=rc.draw_text.last_width, sub_list=sub,
                      text_margin=TextMargin(left=l, right=r, top=t, bottom=b))
@@ -134,7 +135,7 @@ def _map_rect(hd):
     )
 
 
-def _map_shape(hd, group_level):
+def _map_shape(hd, group_level, bin_index=None):
     """Map any HwpDrawing child at a given group level -- shared by a
     container's recursive children. A nested shape (group_level > 0) never
     carries its own GShapeObjectControl, so its trailing placement block
@@ -151,11 +152,11 @@ def _map_shape(hd, group_level):
     treat this as a recoverable fidelity miss (consistent with the
     existing "unsupported chid -> None" pattern elsewhere), not a crash."""
     if hd.kind == "pic" and hd.picture is not None:
-        m = _map_pic(hd)
+        m = _map_pic(hd, bin_index)
     elif hd.kind == "rect" and hd.rect is not None:
-        m = _map_rect(hd)
+        m = _map_rect(hd, bin_index)
     elif hd.kind == "container":
-        m = _map_container(hd, group_level)
+        m = _map_container(hd, group_level, bin_index)
     else:
         return None
     if hasattr(m, "group_level"):
@@ -172,10 +173,10 @@ def _map_shape(hd, group_level):
     return m
 
 
-def _map_container(hd, group_level=0):
+def _map_container(hd, group_level=0, bin_index=None):
     comp = hd.component
     common = _common_container(hd, comp, 0)
-    children = [c for c in (_map_shape(ch, group_level + 1) for ch in hd.children)
+    children = [c for c in (_map_shape(ch, group_level + 1, bin_index) for ch in hd.children)
                 if c is not None]
     return Container(
         id=common["id"], z_order=common["z_order"], text_wrap=common["text_wrap"],
@@ -188,15 +189,15 @@ def _map_container(hd, group_level=0):
     )
 
 
-def map_drawing(hd):
+def map_drawing(hd, bin_index=None):
     if hd is None or hd.component is None:
         return None
     if hd.kind == "line" and hd.line is not None:
         return _map_line(hd)
     if hd.kind == "pic" and hd.picture is not None:
-        return _map_pic(hd)
+        return _map_pic(hd, bin_index)
     if hd.kind == "rect" and hd.rect is not None:
-        return _map_rect(hd)
+        return _map_rect(hd, bin_index)
     if hd.kind == "container":
-        return _map_container(hd, 0)
+        return _map_container(hd, 0, bin_index)
     return None

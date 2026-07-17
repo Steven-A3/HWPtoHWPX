@@ -12,6 +12,7 @@ def convert(hwp_path, out_path):
     hwp_doc = read_document(xml)
     attach_range_tags(hwp_path, hwp_doc)
     title = os.path.splitext(os.path.basename(hwp_path))[0]
-    owpml_doc = map_document(hwp_doc, title=title)
-    owpml_doc.bin_items = extract_bin_items(hwp_path, hwp_doc)
+    items, bin_index = extract_bin_items(hwp_path, hwp_doc)
+    owpml_doc = map_document(hwp_doc, title=title, bin_index=bin_index)
+    owpml_doc.bin_items = items
     write_hwpx(owpml_doc, out_path)

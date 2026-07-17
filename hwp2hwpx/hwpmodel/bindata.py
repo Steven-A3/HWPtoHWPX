@@ -71,22 +71,28 @@ def _list_bindata_streams(hwp_path):
 
 
 def extract_bin_items(hwp_path, hwp_doc):
+    """Returns (items, id_to_index): items named image{index} by document
+    order of first reference (matching Hancom's naming), and the
+    bindata-id -> sequential-index map so the mapper can resolve
+    binaryItemIDRef the same way."""
     ids = _collect_pic_bindata_ids(hwp_doc)
     if not ids:
-        return []
+        return [], {}
+    id_to_index = {bid: i for i, bid in enumerate(ids, 1)}
     streams = _list_bindata_streams(hwp_path)
     items = []
     for bid in ids:
         stream = streams.get(bid)
         if stream is None:
-            continue   # referenced stream missing: skip (pic still refs image{bid})
+            continue   # referenced stream missing: skip (pic still refs image{index})
+        idx = id_to_index[bid]
         ext = stream.rsplit(".", 1)[-1].lower() if "." in stream else "bin"
         data = subprocess.run([_hwp5proc(), "cat", hwp_path, stream],
                               capture_output=True).stdout
         items.append(BinItem(
-            id="image%d" % bid,
-            filename="image%d.%s" % (bid, ext),
+            id="image%d" % idx,
+            filename="image%d.%s" % (idx, ext),
             media_type=_MEDIA.get(ext, "application/octet-stream"),
             data=data,
         ))
-    return items
+    return items, id_to_index

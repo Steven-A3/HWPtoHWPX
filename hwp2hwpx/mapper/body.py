@@ -50,7 +50,7 @@ def _map_line_segs(line_segs):
     ) for ls in line_segs]
 
 
-def map_paragraph(hpar, para_id):
+def map_paragraph(hpar, para_id, bin_index=None):
     """Map one HwpParagraph to an OWPML Para. A table run becomes a Run whose
     `table` is set (deferred import breaks the body<->table recursion cycle)."""
     runs = []
@@ -58,13 +58,13 @@ def map_paragraph(hpar, para_id):
         if getattr(r, "table", None) is not None:
             from .table import map_table
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
-                            table=map_table(r.table),
+                            table=map_table(r.table, bin_index),
                             ctrls=_map_ctrls(r.ctrls),
                             ctrls_after=_map_ctrls(r.ctrls_after)))
         elif getattr(r, "drawing", None) is not None:
             from .drawing import map_drawing
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
-                            drawing=map_drawing(r.drawing),
+                            drawing=map_drawing(r.drawing, bin_index),
                             ctrls=_map_ctrls(r.ctrls),
                             ctrls_after=_map_ctrls(r.ctrls_after)))
         else:
@@ -81,7 +81,7 @@ def map_paragraph(hpar, para_id):
                 line_segs=_map_line_segs(hpar.line_segs))
 
 
-def map_document(hwp_doc, title=""):
+def map_document(hwp_doc, title="", bin_index=None):
     di = hwp_doc.docinfo
     header = Header(
         fonts_by_lang=map_fonts(di.fonts),
@@ -99,7 +99,7 @@ def map_document(hwp_doc, title=""):
     for hsec in hwp_doc.sections:
         paras = []
         for hpar in hsec.paragraphs:
-            paras.append(map_paragraph(hpar, para_id))
+            paras.append(map_paragraph(hpar, para_id, bin_index))
             para_id += 1
         sections.append(Section(paras=paras,
                                 sec_pr=map_section_def(getattr(hsec, "sec_def", None))))
