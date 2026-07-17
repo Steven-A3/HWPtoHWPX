@@ -3,7 +3,7 @@ from ..owpml.model import (
     Line, Offset, OrgSz, CurSz, Flip, RotationInfo, Matrix, RenderingInfo,
     LineShape, WinBrush, Shadow, Pt, ShapeSz, ShapePos, ShapeOutMargin,
     Pic, Img, ImgRect, ImgClip, InMargin, ImgDim, ShapeComment,
-    Rect, DrawText, SubList, TextMargin,
+    Rect, DrawText, SubList, TextMargin, Container,
 )
 from .body import map_paragraph
 
@@ -134,6 +134,52 @@ def _map_rect(hd):
     )
 
 
+def _map_shape(hd, group_level):
+    """Map any HwpDrawing child at a given group level -- shared by a
+    container's recursive children. A nested shape (group_level > 0) never
+    carries its own GShapeObjectControl, so its trailing placement block
+    (sz/pos/outMargin, plus shapeComment for pics) is suppressed here; only
+    the top-level container/shape (mapped outside this helper) keeps it."""
+    if hd.kind == "pic" and hd.picture is not None:
+        m = _map_pic(hd)
+    elif hd.kind == "rect" and hd.rect is not None:
+        m = _map_rect(hd)
+    elif hd.kind == "line" and hd.line is not None:
+        m = _map_line(hd)
+    elif hd.kind == "container":
+        m = _map_container(hd, group_level)
+    else:
+        return None
+    if hasattr(m, "group_level"):
+        m.group_level = group_level
+    if group_level > 0:
+        if hasattr(m, "sz"):
+            m.sz = None
+        if hasattr(m, "pos"):
+            m.pos = None
+        if hasattr(m, "out_margin"):
+            m.out_margin = None
+        if hasattr(m, "shape_comment"):
+            m.shape_comment = None
+    return m
+
+
+def _map_container(hd, group_level=0):
+    comp = hd.component
+    common = _common_container(hd, comp, 0)
+    children = [c for c in (_map_shape(ch, group_level + 1) for ch in hd.children)
+                if c is not None]
+    return Container(
+        id=common["id"], z_order=common["z_order"], text_wrap=common["text_wrap"],
+        instid=hd.instance_id, group_level=group_level,
+        offset=common["offset"], org_sz=common["org_sz"], cur_sz=common["cur_sz"],
+        flip=common["flip"], rotation_info=common["rotation_info"],
+        rendering_info=common["rendering_info"],
+        children=children,
+        sz=common["sz"], pos=common["pos"], out_margin=common["out_margin"],
+    )
+
+
 def map_drawing(hd):
     if hd is None or hd.component is None:
         return None
@@ -143,4 +189,6 @@ def map_drawing(hd):
         return _map_pic(hd)
     if hd.kind == "rect" and hd.rect is not None:
         return _map_rect(hd)
+    if hd.kind == "container":
+        return _map_container(hd, 0)
     return None

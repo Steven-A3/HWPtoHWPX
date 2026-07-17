@@ -1,3 +1,4 @@
+import glob
 import zipfile
 from hwp2hwpx.hwpmodel.reader import hwp5_xml, read_document
 from hwp2hwpx.hwpmodel.bindata import extract_bin_items
@@ -26,6 +27,21 @@ def test_extract_three_byte_identical_images():
 
 def test_no_pictures_no_bin_items():
     assert extract_bin_items(S3, _doc(S3)) == []
+
+
+def test_extract_reaches_pic_nested_in_container():
+    """Task 2: a $con container's child pic is never its own top-level
+    run.drawing (it only shows up in the container's .children), so the
+    bindata collector must recurse into container children or the nested
+    JPEG's binaryItemIDRef="image2" dangles with no embedded file."""
+    s2013 = glob.glob("samples/2013*.hwp")[0]
+    items = extract_bin_items(s2013, _doc(s2013))
+    ids = sorted(i.id for i in items)
+    assert ids == ["image1", "image2", "image3"]
+    jpeg = [i for i in items if i.id == "image2"][0]
+    assert jpeg.media_type == "image/jpeg"
+    assert jpeg.filename.endswith(".jpg")
+    assert len(jpeg.data) > 0
 
 
 def test_stream_num_parses_hex_not_decimal():

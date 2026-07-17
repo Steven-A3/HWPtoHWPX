@@ -25,15 +25,24 @@ def _iter_all_paragraphs(paragraphs):
                             yield p
 
 
+def _collect_drawing_bindata_ids(d, ids):
+    """A pic's bindata id, plus (recursively) any pic nested inside a $con
+    container -- a container's ShapeComponent children are never their own
+    top-level run.drawing, so this walk is the only way to reach them."""
+    if d is None:
+        return
+    if d.kind == "pic" and d.picture is not None and d.picture.bindata_id not in ids:
+        ids.append(d.picture.bindata_id)
+    for child in d.children:
+        _collect_drawing_bindata_ids(child, ids)
+
+
 def _collect_pic_bindata_ids(hwp_doc):
     ids = []
     for sec in hwp_doc.sections:
         for para in _iter_all_paragraphs(sec.paragraphs):
             for run in para.runs:
-                d = getattr(run, "drawing", None)
-                if (d is not None and d.kind == "pic" and d.picture is not None
-                        and d.picture.bindata_id not in ids):
-                    ids.append(d.picture.bindata_id)
+                _collect_drawing_bindata_ids(getattr(run, "drawing", None), ids)
     return ids
 
 

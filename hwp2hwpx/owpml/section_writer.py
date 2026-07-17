@@ -2,7 +2,7 @@
 from lxml import etree
 from ..constants import NS, XML_DECL
 from ..owpml.model import (
-    Control, Pic, Rect, MarkpenBegin, MarkpenEnd, PageHiding, Bookmark, NewNum,
+    Control, Pic, Rect, Container, MarkpenBegin, MarkpenEnd, PageHiding, Bookmark, NewNum,
 )
 
 _NSMAP = {k: v for k, v in NS.items()}
@@ -86,6 +86,8 @@ def _write_run(p_el, run, state):
             _write_pic(r, run.drawing)
         elif isinstance(run.drawing, Rect):
             _write_rect(r, run.drawing, state)
+        elif isinstance(run.drawing, Container):
+            _write_container(r, run.drawing, state)
         else:
             _write_line(r, run.drawing)
     if _run_has_inline_object(run):
@@ -252,7 +254,8 @@ def _write_pic(run_el, p):
     for k, v in (("id", str(p.id)), ("zOrder", str(p.z_order)),
                  ("numberingType", "PICTURE"), ("textWrap", p.text_wrap),
                  ("textFlow", p.text_flow), ("lock", "0"),
-                 ("dropcapstyle", "None"), ("href", ""), ("groupLevel", "0"),
+                 ("dropcapstyle", "None"), ("href", ""),
+                 ("groupLevel", str(p.group_level)),
                  ("instid", str(p.instid)), ("reverse", str(p.reverse))):
         e.set(k, v)
     off = etree.SubElement(e, _hp("offset"))
@@ -293,26 +296,15 @@ def _write_pic(run_el, p):
     idim.set("dimwidth", str(p.img_dim.dim_width))
     idim.set("dimheight", str(p.img_dim.dim_height))
     etree.SubElement(e, _hp("effects"))
-    sz = etree.SubElement(e, _hp("sz"))
-    sz.set("width", str(p.sz.width)); sz.set("widthRelTo", p.sz.width_rel_to)
-    sz.set("height", str(p.sz.height)); sz.set("heightRelTo", p.sz.height_rel_to)
-    sz.set("protect", str(p.sz.protect))
-    po = p.pos
-    pe = etree.SubElement(e, _hp("pos"))
-    for k, v in (("treatAsChar", str(po.treat_as_char)),
-                 ("affectLSpacing", str(po.affect_lspacing)),
-                 ("flowWithText", str(po.flow_with_text)),
-                 ("allowOverlap", str(po.allow_overlap)),
-                 ("holdAnchorAndSO", str(po.hold_anchor_and_so)),
-                 ("vertRelTo", po.vert_rel_to), ("horzRelTo", po.horz_rel_to),
-                 ("vertAlign", po.vert_align), ("horzAlign", po.horz_align),
-                 ("vertOffset", str(po.vert_offset)), ("horzOffset", str(po.horz_offset))):
-        pe.set(k, v)
-    om = etree.SubElement(e, _hp("outMargin"))
-    for side in ("left", "right", "top", "bottom"):
-        om.set(side, str(getattr(p.out_margin, side)))
-    sc = etree.SubElement(e, _hp("shapeComment"))
-    sc.text = p.shape_comment.text if p.shape_comment is not None else ""
+    # sz/pos/outMargin/shapeComment are the GShapeObjectControl placement,
+    # present only for a top-level pic; a nested (container-member) pic has
+    # no GSO of its own and the mapper leaves these None (real Hancom output
+    # ends such a nested <hp:pic> at </hp:effects>).
+    if p.sz is not None:
+        _write_shape_placement(e, p.sz, p.pos, p.out_margin)
+    if p.shape_comment is not None:
+        sc = etree.SubElement(e, _hp("shapeComment"))
+        sc.text = p.shape_comment.text
 
 
 def _write_shape_geom(el, obj):
@@ -331,6 +323,76 @@ def _write_shape_geom(el, obj):
     r = etree.SubElement(el, _hp("rotationInfo"))
     r.set("angle", str(ri.angle)); r.set("centerX", str(ri.center_x))
     r.set("centerY", str(ri.center_y)); r.set("rotateimage", str(ri.rotate_image))
+
+
+def _write_shape_placement(el, sz, pos, out_margin):
+    """Shared trailing sz/pos/outMargin block: the GShapeObjectControl
+    placement, emitted only for a top-level (group_level 0) shape. Used by
+    _write_pic and _write_container; _write_rect keeps its own inline copy
+    (predates this helper, already covered by exact-serialization tests)."""
+    sze = etree.SubElement(el, _hp("sz"))
+    sze.set("width", str(sz.width)); sze.set("widthRelTo", sz.width_rel_to)
+    sze.set("height", str(sz.height)); sze.set("heightRelTo", sz.height_rel_to)
+    sze.set("protect", str(sz.protect))
+    pe = etree.SubElement(el, _hp("pos"))
+    for k, v in (("treatAsChar", str(pos.treat_as_char)),
+                 ("affectLSpacing", str(pos.affect_lspacing)),
+                 ("flowWithText", str(pos.flow_with_text)),
+                 ("allowOverlap", str(pos.allow_overlap)),
+                 ("holdAnchorAndSO", str(pos.hold_anchor_and_so)),
+                 ("vertRelTo", pos.vert_rel_to), ("horzRelTo", pos.horz_rel_to),
+                 ("vertAlign", pos.vert_align), ("horzAlign", pos.horz_align),
+                 ("vertOffset", str(pos.vert_offset)), ("horzOffset", str(pos.horz_offset))):
+        pe.set(k, v)
+    om = etree.SubElement(el, _hp("outMargin"))
+    for side in ("left", "right", "top", "bottom"):
+        om.set(side, str(getattr(out_margin, side)))
+
+
+def _write_shape_child(parent_el, shape, state):
+    """Emit a nested shape (groupLevel >= 1, a $con group member) directly
+    into its container's element rather than a <hp:run> — containers wrap
+    their children inline, not in a fresh run."""
+    if isinstance(shape, Pic):
+        _write_pic(parent_el, shape)
+    elif isinstance(shape, Rect):
+        _write_rect(parent_el, shape, state)
+    elif isinstance(shape, Container):
+        _write_container(parent_el, shape, state)
+    else:
+        _write_line(parent_el, shape)
+
+
+def _write_container(run_el, cont, state):
+    """Emit <hp:container> in Hancom's real element order (verified against
+    the 2013 sample's reference .hwpx):
+      offset, orgSz, curSz, flip, rotationInfo,
+      renderingInfo[ transMatrix, scaMatrix, rotMatrix ]  (ONE pair only --
+        containers carry a single ScaleRotationMatrix, unlike text-bearing
+        rects),
+      <child shapes at groupLevel = this container's level + 1>,
+      [ sz, pos, outMargin -- iff a top-level (GSO-anchored) container ].
+    No lineShape, no shadow, no pt0..pt3 (those are rect-only).
+    """
+    e = etree.SubElement(run_el, _hp("container"))
+    for k, v in (("id", str(cont.id)), ("zOrder", str(cont.z_order)),
+                 ("numberingType", "PICTURE"), ("textWrap", cont.text_wrap),
+                 ("textFlow", cont.text_flow), ("lock", "0"),
+                 ("dropcapstyle", "None"), ("href", ""),
+                 ("groupLevel", str(cont.group_level)), ("instid", str(cont.instid))):
+        e.set(k, v)
+    _write_shape_geom(e, cont)          # offset/orgSz/curSz/flip/rotationInfo
+    rend = etree.SubElement(e, _hp("renderingInfo"))
+    for tag, m in (("transMatrix", cont.rendering_info.trans),
+                   ("scaMatrix", cont.rendering_info.sca),
+                   ("rotMatrix", cont.rendering_info.rot)):
+        me = etree.SubElement(rend, _hc(tag))
+        for i in range(1, 7):
+            me.set("e%d" % i, getattr(m, "e%d" % i))
+    for child in cont.children:
+        _write_shape_child(e, child, state)
+    if cont.sz is not None:
+        _write_shape_placement(e, cont.sz, cont.pos, cont.out_margin)
 
 
 def _write_rect(run_el, rc, state):

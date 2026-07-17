@@ -431,3 +431,4 @@ class HwpDrawing:
     line: "HwpLineShape" = None
     picture: "HwpPicture" = None
     rect: "HwpRect" = None
+    children: list = field(default_factory=list)

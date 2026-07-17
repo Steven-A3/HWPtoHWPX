@@ -253,7 +253,10 @@ def test_writer_emits_nested_rect_without_placement():
 def test_sample2013_toplevel_rects_no_text(tmp_path):
     """Integration: the real 2013 sample's 3 top-level $rec shapes convert
     without error, each emitting a structurally-correct bare <hp:rect> (no
-    text -- see ground-truth note on test_reader_parses_toplevel_rect)."""
+    text -- see ground-truth note on test_reader_parses_toplevel_rect).
+    Since Task 2, the document also has 2 nested (groupLevel=1, text-bearing)
+    rects inside its $con container -- filter those out here; they're
+    covered by tests/test_convert_container.py."""
     from hwp2hwpx.convert import convert
     import zipfile
     out = tmp_path / "s2013.hwpx"
@@ -262,7 +265,9 @@ def test_sample2013_toplevel_rects_no_text(tmp_path):
         sec = z.read("Contents/section0.xml").decode("utf-8")
     root = etree.fromstring(sec.encode("utf-8"))
     ns = {"hp": NS["hp"], "hc": NS["hc"]}
-    rects = root.findall(".//hp:rect", ns)
+    all_rects = root.findall(".//hp:rect", ns)
+    assert len(all_rects) == 5   # 3 top-level + 2 nested (Task 2)
+    rects = [r for r in all_rects if r.get("groupLevel") == "0"]
     assert len(rects) == 3
     for r in rects:
         assert r.get("groupLevel") == "0"

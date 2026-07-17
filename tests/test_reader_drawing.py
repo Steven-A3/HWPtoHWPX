@@ -47,9 +47,12 @@ def test_parse_line_drawing():
     assert d.line.p0 == (0, 0) and d.line.p1 == (100, 100)
 
 
-def test_unsupported_component_yields_none():
-    # $con (container/group) is not yet handled -- deferred to a later task.
-    assert _parse_drawing(etree.fromstring(CONTAINER_GSO)) is None
+def test_container_component_parses_as_container_kind():
+    # $con (container/group) is handled (Task 2): a childless container
+    # still parses, just with an empty children list.
+    d = _parse_drawing(etree.fromstring(CONTAINER_GSO))
+    assert d is not None and d.kind == "container"
+    assert d.children == []
 
 
 def test_parse_paragraph_puts_drawing_in_its_own_run():

@@ -628,6 +628,7 @@ class Pic:
     z_order: int = 0
     text_wrap: str = "TOP_AND_BOTTOM"
     text_flow: str = "BOTH_SIDES"
+    group_level: int = 0
     instid: int = 0
     reverse: int = 0
     offset: "Offset" = None
@@ -690,6 +691,29 @@ class Rect:
     draw_text: "DrawText" = None   # None <=> no nested text
     points: list = field(default_factory=list)   # 4 Pt: outline p0..p3
     sz: "ShapeSz" = None          # None <=> nested (non-top-level) rect
+    pos: "ShapePos" = None
+    out_margin: "ShapeOutMargin" = None
+
+
+@dataclass
+class Container:
+    id: int = 0
+    z_order: int = 0
+    text_wrap: str = "TOP_AND_BOTTOM"
+    text_flow: str = "BOTH_SIDES"
+    group_level: int = 0
+    instid: int = 0
+    offset: "Offset" = None
+    org_sz: "OrgSz" = None
+    cur_sz: "CurSz" = None
+    flip: "Flip" = None
+    rotation_info: "RotationInfo" = None
+    rendering_info: "RenderingInfo" = None
+    children: list = field(default_factory=list)
+    # sz/pos/outMargin are the GShapeObjectControl placement, present only
+    # for a top-level (group_level 0) container; a nested container (a later
+    # task's data, not in current samples) would leave these None.
+    sz: "ShapeSz" = None
     pos: "ShapePos" = None
     out_margin: "ShapeOutMargin" = None
 

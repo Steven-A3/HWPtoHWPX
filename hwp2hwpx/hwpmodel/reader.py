@@ -478,14 +478,44 @@ def _parse_rect(comp_el):
     )
 
 
+def _parse_child_component(comp_el):
+    """A bare ShapeComponent nested inside a $con container (not wrapped in
+    its own GShapeObjectControl) -> HwpDrawing. Reuses the same per-kind
+    parsers as _parse_drawing; the shape-object placement attrs (flow, x, y,
+    width, height, ...) are absent on nested components and stay defaulted."""
+    chid = (comp_el.get("chid0") or comp_el.get("chid") or "").strip()
+    if chid not in ("$lin", "$pic", "$rec", "$con"):
+        return None
+    common = dict(component=_parse_shape_component(comp_el))
+    if chid == "$lin":
+        return HwpDrawing(kind="line", line=_parse_line_shape(comp_el), **common)
+    if chid == "$rec":
+        return HwpDrawing(kind="rect", rect=_parse_rect(comp_el), **common)
+    if chid == "$pic":
+        return HwpDrawing(kind="pic", picture=_parse_picture(comp_el), **common)
+    return HwpDrawing(kind="container", children=_parse_container_children(comp_el), **common)
+
+
+def _parse_container_children(con_comp_el):
+    """Direct ShapeComponent children of a $con component (findall is not
+    recursive, so this returns only the immediate group members)."""
+    out = []
+    for child in con_comp_el.findall("ShapeComponent"):
+        d = _parse_child_component(child)
+        if d is not None:
+            out.append(d)
+    return out
+
+
 def _parse_drawing(gso_el):
     """GShapeObjectControl -> HwpDrawing. Slice A+B+C: line ($lin), picture
-    ($pic), rectangle ($rec); other kinds return None (skipped)."""
+    ($pic), rectangle ($rec), container ($con, recursive); other kinds
+    return None (skipped)."""
     comp = gso_el.find("ShapeComponent")
     if comp is None:
         return None
     chid0 = (comp.get("chid0") or comp.get("chid") or "").strip()
-    if chid0 not in ("$lin", "$pic", "$rec"):
+    if chid0 not in ("$lin", "$pic", "$rec", "$con"):
         return None
     common = dict(
         instance_id=_int(gso_el.get("instance-id")),
@@ -513,6 +543,8 @@ def _parse_drawing(gso_el):
         return HwpDrawing(kind="line", line=_parse_line_shape(comp), **common)
     if chid0 == "$rec":
         return HwpDrawing(kind="rect", rect=_parse_rect(comp), **common)
+    if chid0 == "$con":
+        return HwpDrawing(kind="container", children=_parse_container_children(comp), **common)
     return HwpDrawing(kind="pic", picture=_parse_picture(comp), **common)
 
 
