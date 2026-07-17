@@ -217,11 +217,22 @@ class HwpControl:
 
 
 @dataclass
+class HwpPageHide:
+    hide_header: int = 0
+    hide_footer: int = 0
+    hide_master_page: int = 0
+    hide_border: int = 0
+    hide_fill: int = 0
+    hide_page_num: int = 0
+
+
+@dataclass
 class HwpRun:
     char_shape_id: int
     contents: list = field(default_factory=list)
     table: "HwpTable" = None
     drawing: "HwpDrawing" = None
+    ctrls: list = field(default_factory=list)
 
     @property
     def text(self):

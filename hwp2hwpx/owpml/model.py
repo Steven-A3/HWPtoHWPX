@@ -268,6 +268,16 @@ class Control:
 
 
 @dataclass
+class PageHiding:
+    hide_header: int = 0
+    hide_footer: int = 0
+    hide_master_page: int = 0
+    hide_border: int = 0
+    hide_fill: int = 0
+    hide_page_num: int = 0
+
+
+@dataclass
 class MarkpenBegin:
     color: str = "#FFFFFF"
 
@@ -296,6 +306,7 @@ class Run:
     texts: list = field(default_factory=list)
     table: "Table" = None
     drawing: "Line" = None
+    ctrls: list = field(default_factory=list)
 
 
 @dataclass

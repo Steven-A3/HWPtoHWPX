@@ -1,7 +1,7 @@
 """Serialize an OWPML Section to Contents/sectionN.xml."""
 from lxml import etree
 from ..constants import NS, XML_DECL
-from ..owpml.model import Control, Pic, MarkpenBegin, MarkpenEnd
+from ..owpml.model import Control, Pic, MarkpenBegin, MarkpenEnd, PageHiding
 
 _NSMAP = {k: v for k, v in NS.items()}
 
@@ -34,6 +34,15 @@ def _run_has_inline_object(run):
 def _write_run(p_el, run, state):
     r = etree.SubElement(p_el, _hp("run"))
     r.set("charPrIDRef", str(run.char_pr_id))
+    for c in getattr(run, "ctrls", ()):
+        ctrl = etree.SubElement(r, _hp("ctrl"))
+        ph = etree.SubElement(ctrl, _hp("pageHiding"))
+        ph.set("hideHeader", str(c.hide_header))
+        ph.set("hideFooter", str(c.hide_footer))
+        ph.set("hideMasterPage", str(c.hide_master_page))
+        ph.set("hideBorder", str(c.hide_border))
+        ph.set("hideFill", str(c.hide_fill))
+        ph.set("hidePageNum", str(c.hide_page_num))
     if run.texts:
         te = etree.SubElement(r, _hp("t"))
         last = None  # last inline child; text after it goes to its .tail
