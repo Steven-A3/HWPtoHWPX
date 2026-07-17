@@ -10,7 +10,7 @@ from .model import (
     HwpStyle, HwpTab, HwpTabDef, HwpLineSeg,
     HwpPageDef, HwpNoteShape, HwpPageBorder, HwpColumnsDef, HwpPageNum,
     HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing, HwpPicture,
-    HwpDocProperties, HwpCompatDocument,
+    HwpDocProperties, HwpCompatDocument, HwpPageHide,
 )
 
 _ALIGN_MAP = {
@@ -445,11 +445,14 @@ def parse_paragraph(para_el):
     cur_contents = []
     markpen_unsafe = False
     break_cs = None
+    pending_ctrls = []
 
     def flush():
-        nonlocal cur_cs, cur_contents
+        nonlocal cur_cs, cur_contents, pending_ctrls
         if cur_contents:
-            runs.append(HwpRun(char_shape_id=cur_cs, contents=cur_contents))
+            runs.append(HwpRun(char_shape_id=cur_cs, contents=cur_contents,
+                               ctrls=pending_ctrls))
+            pending_ctrls = []
         cur_cs = None
         cur_contents = []
 
@@ -495,6 +498,9 @@ def parse_paragraph(para_el):
                     contents=[],
                     drawing=drawing,
                 ))
+        elif child.tag == "PageHide":
+            pending_ctrls.append(_parse_page_hide(child))
+            markpen_unsafe = True   # extended control occupies char positions
     flush()
     last_cs = None
     for run in runs:
@@ -596,6 +602,17 @@ def _clamp_paragraph_style_ids(sections, style_count):
                             _walk(cell.paragraphs)
     for sec in sections:
         _walk(sec.paragraphs)
+
+
+def _parse_page_hide(el):
+    return HwpPageHide(
+        hide_header=_int(el.get("header")),
+        hide_footer=_int(el.get("footer")),
+        hide_master_page=_int(el.get("basepage")),
+        hide_border=_int(el.get("pageborder")),
+        hide_fill=_int(el.get("pagefill")),
+        hide_page_num=_int(el.get("pagenumber")),
+    )
 
 
 def _parse_page_def(sec_el):

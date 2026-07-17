@@ -1,6 +1,7 @@
 """Map a whole HwpDocument to an OwpmlDocument."""
 from ..owpml.model import (
     OwpmlDocument, Header, Section, Para, Run, Text, Metadata, Control, LineSeg,
+    PageHiding,
 )
 from .fonts import map_fonts
 from .char_pr import map_char_shapes
@@ -24,6 +25,16 @@ def _map_contents(contents):
     return out
 
 
+def _map_ctrls(ctrls):
+    out = []
+    for c in ctrls:
+        out.append(PageHiding(
+            hide_header=c.hide_header, hide_footer=c.hide_footer,
+            hide_master_page=c.hide_master_page, hide_border=c.hide_border,
+            hide_fill=c.hide_fill, hide_page_num=c.hide_page_num))
+    return out
+
+
 def _map_line_segs(line_segs):
     return [LineSeg(
         text_pos=ls.text_pos, vert_pos=ls.vert_pos, vert_size=ls.vert_size,
@@ -40,14 +51,17 @@ def map_paragraph(hpar, para_id):
         if getattr(r, "table", None) is not None:
             from .table import map_table
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
-                            table=map_table(r.table)))
+                            table=map_table(r.table),
+                            ctrls=_map_ctrls(r.ctrls)))
         elif getattr(r, "drawing", None) is not None:
             from .drawing import map_drawing
             runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
-                            drawing=map_drawing(r.drawing)))
+                            drawing=map_drawing(r.drawing),
+                            ctrls=_map_ctrls(r.ctrls)))
         else:
             runs.append(Run(char_pr_id=r.char_shape_id,
-                            texts=_map_contents(r.contents)))
+                            texts=_map_contents(r.contents),
+                            ctrls=_map_ctrls(r.ctrls)))
     if not runs:
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]
