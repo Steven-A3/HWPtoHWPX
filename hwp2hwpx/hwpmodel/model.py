@@ -46,6 +46,7 @@ class HwpCharShape:
     shadow_color: str = "#C0C0C0"
     shadow_offset_x: int = 10
     shadow_offset_y: int = 10
+    subscript: bool = False
 
 
 @dataclass

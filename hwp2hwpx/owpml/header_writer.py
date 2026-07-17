@@ -150,6 +150,9 @@ def header_xml(header, sec_cnt=1):
         sh.set("offsetX", str(cp.shadow_offset_x))
         sh.set("offsetY", str(cp.shadow_offset_y))
 
+        if cp.subscript:
+            etree.SubElement(ce, _hh("subscript"))
+
     tabs_el = etree.SubElement(ref, _hh("tabProperties"))
     if header.tab_defs:
         tabs_el.set("itemCnt", str(len(header.tab_defs)))

@@ -223,6 +223,7 @@ def read_docinfo(xml_bytes):
             shadow_color=(el.get("shadow-color") or "#c0c0c0").upper(),
             shadow_offset_x=_shadow_space(el, "x"),
             shadow_offset_y=_shadow_space(el, "y"),
+            subscript=((_hex_int(el.get("charshapeflags")) >> 16) & 1) == 1,
         ))
 
     para_shapes = []
