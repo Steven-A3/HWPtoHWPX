@@ -3,7 +3,7 @@ from ..owpml.model import (
     Line, Offset, OrgSz, CurSz, Flip, RotationInfo, Matrix, RenderingInfo,
     LineShape, WinBrush, Shadow, Pt, ShapeSz, ShapePos, ShapeOutMargin,
     Pic, Img, ImgRect, ImgClip, InMargin, ImgDim, ShapeComment,
-    Rect, DrawText, SubList,
+    Rect, DrawText, SubList, TextMargin,
 )
 from .body import map_paragraph
 
@@ -105,21 +105,32 @@ def _map_pic(hd):
 
 def _map_rect(hd):
     comp, rc = hd.component, hd.rect
-    dt = rc.draw_text
-    sub = SubList(vert_align=dt.vert_align,
-                  paras=[map_paragraph(p, 0) for p in dt.paragraphs])
+    dt = None
+    if rc.draw_text is not None:
+        sub = SubList(vert_align=rc.draw_text.vert_align,
+                      paras=[map_paragraph(p, 0) for p in rc.draw_text.paragraphs])
+        l, r, t, b = rc.text_margin
+        dt = DrawText(last_width=rc.draw_text.last_width, sub_list=sub,
+                     text_margin=TextMargin(left=l, right=r, top=t, bottom=b))
     common = _common_container(hd, comp, 0)
     return Rect(
         id=common["id"], z_order=common["z_order"], text_wrap=common["text_wrap"],
-        instid=hd.instance_id, group_level=1, ratio=0,
+        instid=hd.instance_id, group_level=0, ratio=0,
         offset=common["offset"], org_sz=common["org_sz"], cur_sz=common["cur_sz"],
         flip=common["flip"], rotation_info=common["rotation_info"],
         rendering_info=common["rendering_info"],
-        sca2=_matrix(comp.scaler_matrix2), rot2=_matrix(comp.rotator_matrix2),
+        # 2nd matrix pair is present only when the source actually had one.
+        sca2=_matrix(comp.scaler_matrix2) if comp.has_matrix2 else None,
+        rot2=_matrix(comp.rotator_matrix2) if comp.has_matrix2 else None,
         line_shape=LineShape(color=rc.line_color, width=rc.line_width,
                              style="NONE", end_cap="FLAT"),
         shadow=Shadow(),
-        draw_text=DrawText(last_width=dt.last_width, sub_list=sub),
+        draw_text=dt,
+        points=[Pt(x, y) for x, y in rc.points],
+        # sz/pos/outMargin are the GShapeObjectControl placement, present
+        # for top-level rects (this task); nested rects (a later task) are
+        # not wrapped in their own GSO and won't populate these.
+        sz=common["sz"], pos=common["pos"], out_margin=common["out_margin"],
     )
 
 

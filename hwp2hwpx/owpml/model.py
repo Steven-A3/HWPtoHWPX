@@ -654,9 +654,18 @@ class SubList:
 
 
 @dataclass
+class TextMargin:
+    left: int = 0
+    right: int = 0
+    top: int = 0
+    bottom: int = 0
+
+
+@dataclass
 class DrawText:
     last_width: int = 0
     sub_list: "SubList" = None
+    text_margin: "TextMargin" = None
 
 
 @dataclass
@@ -665,7 +674,7 @@ class Rect:
     z_order: int = 0
     text_wrap: str = "TOP_AND_BOTTOM"
     text_flow: str = "BOTH_SIDES"
-    group_level: int = 1
+    group_level: int = 0
     instid: int = 0
     ratio: int = 0
     offset: "Offset" = None
@@ -674,11 +683,15 @@ class Rect:
     flip: "Flip" = None
     rotation_info: "RotationInfo" = None
     rendering_info: "RenderingInfo" = None
-    sca2: "Matrix" = None
+    sca2: "Matrix" = None    # None <=> source had no 2nd ScaleRotationMatrix
     rot2: "Matrix" = None
     line_shape: "LineShape" = None
     shadow: "Shadow" = None
-    draw_text: "DrawText" = None
+    draw_text: "DrawText" = None   # None <=> no nested text
+    points: list = field(default_factory=list)   # 4 Pt: outline p0..p3
+    sz: "ShapeSz" = None          # None <=> nested (non-top-level) rect
+    pos: "ShapePos" = None
+    out_margin: "ShapeOutMargin" = None
 
 
 @dataclass

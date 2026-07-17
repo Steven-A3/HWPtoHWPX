@@ -376,6 +376,7 @@ def _parse_shape_component(comp_el):
         trans_matrix=_matrix_values(trans),
         scaler_matrix=sca1, rotator_matrix=rot1,
         scaler_matrix2=sca2, rotator_matrix2=rot2,
+        has_matrix2=len(srms) >= 2,
     )
 
 
@@ -434,6 +435,20 @@ def _parse_picture(comp_el):
 _VALIGN_BOX = {"top": "TOP", "middle": "CENTER", "bottom": "BOTTOM"}
 
 
+def _parse_shape_rectangle_points(comp_el):
+    """ShapeComponent > ShapeRectangle > Coord[@attribute-name='p0'..'p3'] ->
+    4 (x, y) tuples. Defaults to a degenerate zero rect when absent."""
+    pts = [(0, 0), (0, 0), (0, 0), (0, 0)]
+    sr = comp_el.find("ShapeRectangle")
+    if sr is None:
+        return pts
+    for i in range(4):
+        c = sr.find("Coord[@attribute-name='p%d']" % i)
+        if c is not None:
+            pts[i] = (_int(c.get("x")), _int(c.get("y")))
+    return pts
+
+
 def _parse_rect(comp_el):
     bl = comp_el.find("BorderLine[@attribute-name='border']")
     tpl = comp_el.find("TextboxParagraphList")
@@ -441,15 +456,25 @@ def _parse_rect(comp_el):
     if tpl is not None:
         for p_el in tpl.findall("Paragraph"):
             paras.append(parse_paragraph(p_el))
-    dt = HwpDrawText(
-        last_width=_int(tpl.get("maxwidth")) if tpl is not None else 0,
-        vert_align=_VALIGN_BOX.get((tpl.get("valign") if tpl is not None else "middle"), "CENTER"),
-        paragraphs=paras,
-    )
+    # A TextboxParagraphList with no actual paragraphs is treated the same as
+    # no TextboxParagraphList at all: no <hp:drawText> gets emitted.
+    dt = None
+    if tpl is not None and paras:
+        dt = HwpDrawText(
+            last_width=_int(tpl.get("maxwidth")),
+            vert_align=_VALIGN_BOX.get(tpl.get("valign") or "middle", "CENTER"),
+            paragraphs=paras,
+        )
+    text_margin = (0, 0, 0, 0)
+    if tpl is not None:
+        text_margin = (_int(tpl.get("padding-left")), _int(tpl.get("padding-right")),
+                       _int(tpl.get("padding-top")), _int(tpl.get("padding-bottom")))
     return HwpRect(
         line_color=(bl.get("color") if bl is not None else None) or "#000000",
         line_width=_int(bl.get("width")) if bl is not None else 0,
         draw_text=dt,
+        points=_parse_shape_rectangle_points(comp_el),
+        text_margin=text_margin,
     )
 
 

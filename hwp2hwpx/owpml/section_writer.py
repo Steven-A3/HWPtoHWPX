@@ -334,6 +334,16 @@ def _write_shape_geom(el, obj):
 
 
 def _write_rect(run_el, rc, state):
+    """Emit <hp:rect> in Hancom's real element order (verified against the
+    2013 sample's reference .hwpx, both variants):
+      offset, orgSz, curSz, flip, rotationInfo,
+      renderingInfo[ transMatrix, scaMatrix, rotMatrix (+ 2nd scaMatrix/
+        rotMatrix iff the source had a 2nd ScaleRotationMatrix) ],
+      lineShape, shadow,
+      [ drawText[ subList, textMargin ] -- iff the rect has nested text ],
+      pt0..pt3,
+      [ sz, pos, outMargin -- iff a top-level (GSO-anchored) rect ].
+    """
     e = etree.SubElement(run_el, _hp("rect"))
     for k, v in (("id", str(rc.id)), ("zOrder", str(rc.z_order)),
                  ("numberingType", "NONE"), ("textWrap", rc.text_wrap),
@@ -344,10 +354,12 @@ def _write_rect(run_el, rc, state):
         e.set(k, v)
     _write_shape_geom(e, rc)          # offset/orgSz/curSz/flip/rotationInfo
     rend = etree.SubElement(e, _hp("renderingInfo"))
-    for tag, m in (("transMatrix", rc.rendering_info.trans),
-                   ("scaMatrix", rc.rendering_info.sca),
-                   ("rotMatrix", rc.rendering_info.rot),
-                   ("scaMatrix", rc.sca2), ("rotMatrix", rc.rot2)):
+    matrices = [("transMatrix", rc.rendering_info.trans),
+                ("scaMatrix", rc.rendering_info.sca),
+                ("rotMatrix", rc.rendering_info.rot)]
+    if rc.sca2 is not None:
+        matrices += [("scaMatrix", rc.sca2), ("rotMatrix", rc.rot2)]
+    for tag, m in matrices:
         me = etree.SubElement(rend, _hc(tag))
         for i in range(1, 7):
             me.set("e%d" % i, getattr(m, "e%d" % i))
@@ -362,12 +374,33 @@ def _write_rect(run_el, rc, state):
     for k, v in (("type", "NONE"), ("color", "#000000"), ("offsetX", "0"),
                  ("offsetY", "0"), ("alpha", "0")):
         sh.set(k, v)
-    _write_draw_text(e, rc.draw_text, state)
+    if rc.draw_text is not None:
+        _write_draw_text(e, rc.draw_text, state)
+    for i, pt in enumerate(rc.points):
+        pe = etree.SubElement(e, _hc("pt%d" % i))
+        pe.set("x", str(pt.x)); pe.set("y", str(pt.y))
+    if rc.sz is not None:
+        sz = etree.SubElement(e, _hp("sz"))
+        sz.set("width", str(rc.sz.width)); sz.set("widthRelTo", rc.sz.width_rel_to)
+        sz.set("height", str(rc.sz.height)); sz.set("heightRelTo", rc.sz.height_rel_to)
+        sz.set("protect", str(rc.sz.protect))
+        po = rc.pos
+        pe = etree.SubElement(e, _hp("pos"))
+        for k, v in (("treatAsChar", str(po.treat_as_char)),
+                     ("affectLSpacing", str(po.affect_lspacing)),
+                     ("flowWithText", str(po.flow_with_text)),
+                     ("allowOverlap", str(po.allow_overlap)),
+                     ("holdAnchorAndSO", str(po.hold_anchor_and_so)),
+                     ("vertRelTo", po.vert_rel_to), ("horzRelTo", po.horz_rel_to),
+                     ("vertAlign", po.vert_align), ("horzAlign", po.horz_align),
+                     ("vertOffset", str(po.vert_offset)), ("horzOffset", str(po.horz_offset))):
+            pe.set(k, v)
+        om = etree.SubElement(e, _hp("outMargin"))
+        for side in ("left", "right", "top", "bottom"):
+            om.set(side, str(getattr(rc.out_margin, side)))
 
 
 def _write_draw_text(rect_el, dt, state):
-    if dt is None:
-        return
     if state is None:
         state = {"para_id": 0, "tbl_id": 0}
     dte = etree.SubElement(rect_el, _hp("drawText"))
@@ -381,6 +414,11 @@ def _write_draw_text(rect_el, dt, state):
         sle.set(k, v)
     for para in sl.paras:
         _write_paragraph(sle, para, state)
+    tm = dt.text_margin
+    if tm is not None:
+        tme = etree.SubElement(dte, _hp("textMargin"))
+        for side in ("left", "right", "top", "bottom"):
+            tme.set(side, str(getattr(tm, side)))
 
 
 def _write_line(run_el, ln):

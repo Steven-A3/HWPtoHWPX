@@ -357,6 +357,7 @@ class HwpShapeComponent:
     rotator_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     scaler_matrix2: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     rotator_matrix2: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    has_matrix2: bool = False   # True iff the source had a 2nd ScaleRotationMatrix
 
 
 @dataclass
@@ -399,7 +400,9 @@ class HwpDrawText:
 class HwpRect:
     line_color: str = "#000000"
     line_width: int = 0
-    draw_text: "HwpDrawText" = None
+    draw_text: "HwpDrawText" = None   # None <=> no TextboxParagraphList/text
+    points: list = field(default_factory=lambda: [(0, 0), (0, 0), (0, 0), (0, 0)])
+    text_margin: tuple = (0, 0, 0, 0)  # left, right, top, bottom
 
 
 @dataclass
