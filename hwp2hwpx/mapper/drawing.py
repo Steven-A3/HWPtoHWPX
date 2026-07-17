@@ -139,13 +139,21 @@ def _map_shape(hd, group_level):
     container's recursive children. A nested shape (group_level > 0) never
     carries its own GShapeObjectControl, so its trailing placement block
     (sz/pos/outMargin, plus shapeComment for pics) is suppressed here; only
-    the top-level container/shape (mapped outside this helper) keeps it."""
+    the top-level container/shape (mapped outside this helper) keeps it.
+
+    A nested $lin (line) child is deliberately dropped (returns None)
+    rather than mapped: unlike Pic/Rect/Container, _write_line has no
+    None-guard on ln.sz/ln.pos/ln.out_margin -- it unconditionally
+    dereferences them for the trailing placement block. Nulling them out
+    here the way we do for the other kinds would just move the crash into
+    the writer instead of avoiding it, and no current sample nests a line
+    in a container. Until _write_line grows the same guard _write_pic has,
+    treat this as a recoverable fidelity miss (consistent with the
+    existing "unsupported chid -> None" pattern elsewhere), not a crash."""
     if hd.kind == "pic" and hd.picture is not None:
         m = _map_pic(hd)
     elif hd.kind == "rect" and hd.rect is not None:
         m = _map_rect(hd)
-    elif hd.kind == "line" and hd.line is not None:
-        m = _map_line(hd)
     elif hd.kind == "container":
         m = _map_container(hd, group_level)
     else:
