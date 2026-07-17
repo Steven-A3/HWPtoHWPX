@@ -81,11 +81,14 @@ index** links range tags to parsed `HwpParagraph`s with no fuzzy/text matching.
   code-unit length; a `Control` contributes 1). A `MarkpenBegin(color)` is
   inserted at offset `start`, a `MarkpenEnd()` at offset `end`, splitting the
   containing `Text` item when a boundary falls mid-string.
-- Scope guard: markpen injection only descends into runs whose `texts` hold
-  `Text`/`Control` (the only case in the samples). A run carrying a table/drawing
-  contributes its char width to the offset but is not split; if a markpen
-  boundary would fall inside such a run, skip that span and `log`/record it
-  (never emit a misplaced marker).
+- Scope guard: `apply_markpens` is a **no-op for any paragraph that contains a
+  non-text run** (a run carrying a `table` or `drawing`), because such runs have
+  empty OWPML `texts` and their true HWP char-width is not reliably known — so
+  offsets past them cannot be trusted. Both samples' markpen paragraphs are pure
+  text, so this loses nothing. The marker-placement rule at run boundaries is
+  **begin→start of the following run, end→end of the preceding run** (verified
+  against Hancom: span2's begin at offset 35 leads the next run rather than
+  trailing the previous one); at a same-offset gap, ends precede begins.
 
 **Writer (`owpml/section_writer.py`):**
 - In `_write_run`, handle `MarkpenBegin`/`MarkpenEnd` in the `run.texts` loop
