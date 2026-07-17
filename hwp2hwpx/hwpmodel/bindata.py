@@ -8,7 +8,10 @@ import subprocess
 from ..owpml.model import BinItem
 from .reader import _hwp5proc
 
-_MEDIA = {"bmp": "image/bmp", "png": "image/png", "jpg": "image/jpeg",
+# Hancom spells the .jpg media type "image/jpg" (non-standard, but that's
+# what content.hpf ships) -- matched here for fidelity, not RFC compliance.
+# ".jpeg"-extension files keep the standard "image/jpeg".
+_MEDIA = {"bmp": "image/bmp", "png": "image/png", "jpg": "image/jpg",
           "jpeg": "image/jpeg", "gif": "image/gif", "wmf": "image/x-wmf",
           "tiff": "image/tiff", "tif": "image/tiff"}
 
@@ -28,7 +31,19 @@ def _iter_all_paragraphs(paragraphs):
 def _collect_drawing_bindata_ids(d, ids):
     """A pic's bindata id, plus (recursively) any pic nested inside a $con
     container -- a container's ShapeComponent children are never their own
-    top-level run.drawing, so this walk is the only way to reach them."""
+    top-level run.drawing, so this walk is the only way to reach them.
+
+    KNOWN LIMITATION: a pic nested inside a Rect's text box
+    (`d.rect.draw_text.paragraphs`, i.e. a picture placed in a drawn
+    rectangle's caption/text area) is NOT reached -- this walk only
+    recurses `d.children`, not into `draw_text.paragraphs`. The mapper
+    (`drawing._map_rect`) does map that nested paragraph's drawing via
+    `map_paragraph`, so if such a pic exists, it produces a dangling
+    `binaryItemIDRef` (no embedded file) and its bindata-id is missing
+    from `id_to_index`, so `_map_pic`'s fallback-to-raw-id can collide
+    with a renumbered index of an unrelated image. No current sample
+    triggers this; fixing it (recursing into draw_text paragraphs here)
+    is out of scope until a sample exercises the path."""
     if d is None:
         return
     if d.kind == "pic" and d.picture is not None and d.picture.bindata_id not in ids:

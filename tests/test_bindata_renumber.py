@@ -34,3 +34,15 @@ def test_sample4_bindata_unchanged():
     convert(hwp, out)
     assert _bindata(out) == ["BinData/image1.bmp", "BinData/image2.bmp",
                              "BinData/image3.bmp"]
+
+
+def test_2013_jpeg_media_type_matches_hancom_content_hpf():
+    """Hancom's content.hpf spells the JPEG media type "image/jpg" (not the
+    RFC-correct "image/jpeg") -- matched here for fidelity. Confirmed against
+    samples/20131106*.hwpx's own content.hpf, which uses the same spelling."""
+    hwp = glob.glob("samples/2013*.hwp")[0]
+    out = tempfile.mktemp(suffix=".hwpx")
+    convert(hwp, out)
+    hpf = unzip_parts(out)["Contents/content.hpf"].decode("utf-8")
+    assert 'href="BinData/image1.jpg" media-type="image/jpg"' in hpf
+    assert "image/jpeg" not in hpf

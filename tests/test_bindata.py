@@ -39,7 +39,10 @@ def test_extract_reaches_pic_nested_in_container():
     ids = sorted(i.id for i in items)
     assert ids == ["image1", "image2", "image3"]
     jpeg = [i for i in items if i.id == "image1"][0]
-    assert jpeg.media_type == "image/jpeg"
+    # Hancom spells this "image/jpg" (non-standard) in content.hpf, not the
+    # RFC-correct "image/jpeg" -- matched here for fidelity. See
+    # test_2013_jpeg_media_type_matches_hancom_content_hpf for the e2e check.
+    assert jpeg.media_type == "image/jpg"
     assert jpeg.filename.endswith(".jpg")
     assert len(jpeg.data) > 0
 
