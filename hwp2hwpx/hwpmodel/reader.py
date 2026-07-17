@@ -441,6 +441,7 @@ def parse_paragraph(para_el):
     cur_cs = None
     cur_contents = []
     markpen_unsafe = False
+    break_cs = None
 
     def flush():
         nonlocal cur_cs, cur_contents
@@ -464,6 +465,9 @@ def parse_paragraph(para_el):
         elif child.tag == "ControlChar":
             if child.get("name") not in _MARKPEN_SAFE_CONTROL_NAMES:
                 markpen_unsafe = True
+            if child.get("name") == "PARAGRAPH_BREAK":
+                v = child.get("charshape-id")
+                break_cs = _int(v) if v is not None else None
             kind = _CONTROL_KIND.get(child.get("name"))
             if kind is None:
                 continue  # PARAGRAPH_BREAK and any other control chars
@@ -489,6 +493,12 @@ def parse_paragraph(para_el):
                     drawing=drawing,
                 ))
     flush()
+    last_cs = None
+    for run in runs:
+        if run.contents:
+            last_cs = run.char_shape_id
+    if break_cs is not None and last_cs is not None and break_cs != last_cs:
+        runs.append(HwpRun(char_shape_id=break_cs, contents=[]))
     return HwpParagraph(
         para_shape_id=_int(para_el.get("parashape-id")),
         style_id=_int(para_el.get("style-id")),
