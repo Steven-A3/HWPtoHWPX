@@ -355,6 +355,8 @@ class HwpShapeComponent:
     trans_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     scaler_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
     rotator_matrix: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    scaler_matrix2: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    rotator_matrix2: list = field(default_factory=lambda: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
 
 
 @dataclass
@@ -387,6 +389,20 @@ class HwpPicture:
 
 
 @dataclass
+class HwpDrawText:
+    last_width: int = 0
+    vert_align: str = "CENTER"
+    paragraphs: list = field(default_factory=list)
+
+
+@dataclass
+class HwpRect:
+    line_color: str = "#000000"
+    line_width: int = 0
+    draw_text: "HwpDrawText" = None
+
+
+@dataclass
 class HwpDrawing:
     kind: str = "line"
     instance_id: int = 0
@@ -411,3 +427,4 @@ class HwpDrawing:
     component: "HwpShapeComponent" = None
     line: "HwpLineShape" = None
     picture: "HwpPicture" = None
+    rect: "HwpRect" = None

@@ -25,9 +25,9 @@ LINE_GSO = '''
   </ShapeComponent>
 </GShapeObjectControl>'''
 
-RECT_GSO = '''
+CONTAINER_GSO = '''
 <GShapeObjectControl chid="gso " instance-id="5" z-order="1">
-  <ShapeComponent chid="$rec" chid0="$rec" width="10" height="10"
+  <ShapeComponent chid="$con" chid0="$con" width="10" height="10"
     initial-width="10" initial-height="10"/>
 </GShapeObjectControl>'''
 
@@ -47,8 +47,9 @@ def test_parse_line_drawing():
     assert d.line.p0 == (0, 0) and d.line.p1 == (100, 100)
 
 
-def test_non_line_component_yields_none():
-    assert _parse_drawing(etree.fromstring(RECT_GSO)) is None
+def test_unsupported_component_yields_none():
+    # $con (container/group) is not yet handled -- deferred to a later task.
+    assert _parse_drawing(etree.fromstring(CONTAINER_GSO)) is None
 
 
 def test_parse_paragraph_puts_drawing_in_its_own_run():

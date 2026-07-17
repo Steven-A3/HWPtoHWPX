@@ -648,6 +648,40 @@ class Pic:
 
 
 @dataclass
+class SubList:
+    vert_align: str = "CENTER"
+    paras: list = field(default_factory=list)
+
+
+@dataclass
+class DrawText:
+    last_width: int = 0
+    sub_list: "SubList" = None
+
+
+@dataclass
+class Rect:
+    id: int = 0
+    z_order: int = 0
+    text_wrap: str = "TOP_AND_BOTTOM"
+    text_flow: str = "BOTH_SIDES"
+    group_level: int = 1
+    instid: int = 0
+    ratio: int = 0
+    offset: "Offset" = None
+    org_sz: "OrgSz" = None
+    cur_sz: "CurSz" = None
+    flip: "Flip" = None
+    rotation_info: "RotationInfo" = None
+    rendering_info: "RenderingInfo" = None
+    sca2: "Matrix" = None
+    rot2: "Matrix" = None
+    line_shape: "LineShape" = None
+    shadow: "Shadow" = None
+    draw_text: "DrawText" = None
+
+
+@dataclass
 class BinItem:
     id: str = ""
     filename: str = ""

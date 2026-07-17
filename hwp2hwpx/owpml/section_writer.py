@@ -2,7 +2,7 @@
 from lxml import etree
 from ..constants import NS, XML_DECL
 from ..owpml.model import (
-    Control, Pic, MarkpenBegin, MarkpenEnd, PageHiding, Bookmark, NewNum,
+    Control, Pic, Rect, MarkpenBegin, MarkpenEnd, PageHiding, Bookmark, NewNum,
 )
 
 _NSMAP = {k: v for k, v in NS.items()}
@@ -84,6 +84,8 @@ def _write_run(p_el, run, state):
     if getattr(run, "drawing", None) is not None:
         if isinstance(run.drawing, Pic):
             _write_pic(r, run.drawing)
+        elif isinstance(run.drawing, Rect):
+            _write_rect(r, run.drawing, state)
         else:
             _write_line(r, run.drawing)
     if _run_has_inline_object(run):
@@ -311,6 +313,74 @@ def _write_pic(run_el, p):
         om.set(side, str(getattr(p.out_margin, side)))
     sc = etree.SubElement(e, _hp("shapeComment"))
     sc.text = p.shape_comment.text if p.shape_comment is not None else ""
+
+
+def _write_shape_geom(el, obj):
+    """Shared offset/orgSz/curSz/flip/rotationInfo prologue, common to all
+    drawing-shape kinds. Only `_write_rect` uses this so far; refactoring
+    `_write_pic`/`_write_line` onto it is out of scope for this change."""
+    off = etree.SubElement(el, _hp("offset"))
+    off.set("x", str(obj.offset.x)); off.set("y", str(obj.offset.y))
+    osz = etree.SubElement(el, _hp("orgSz"))
+    osz.set("width", str(obj.org_sz.width)); osz.set("height", str(obj.org_sz.height))
+    csz = etree.SubElement(el, _hp("curSz"))
+    csz.set("width", str(obj.cur_sz.width)); csz.set("height", str(obj.cur_sz.height))
+    fl = etree.SubElement(el, _hp("flip"))
+    fl.set("horizontal", str(obj.flip.horizontal)); fl.set("vertical", str(obj.flip.vertical))
+    ri = obj.rotation_info
+    r = etree.SubElement(el, _hp("rotationInfo"))
+    r.set("angle", str(ri.angle)); r.set("centerX", str(ri.center_x))
+    r.set("centerY", str(ri.center_y)); r.set("rotateimage", str(ri.rotate_image))
+
+
+def _write_rect(run_el, rc, state):
+    e = etree.SubElement(run_el, _hp("rect"))
+    for k, v in (("id", str(rc.id)), ("zOrder", str(rc.z_order)),
+                 ("numberingType", "NONE"), ("textWrap", rc.text_wrap),
+                 ("textFlow", rc.text_flow), ("lock", "0"),
+                 ("dropcapstyle", "None"), ("href", ""),
+                 ("groupLevel", str(rc.group_level)), ("instid", str(rc.instid)),
+                 ("ratio", str(rc.ratio))):
+        e.set(k, v)
+    _write_shape_geom(e, rc)          # offset/orgSz/curSz/flip/rotationInfo
+    rend = etree.SubElement(e, _hp("renderingInfo"))
+    for tag, m in (("transMatrix", rc.rendering_info.trans),
+                   ("scaMatrix", rc.rendering_info.sca),
+                   ("rotMatrix", rc.rendering_info.rot),
+                   ("scaMatrix", rc.sca2), ("rotMatrix", rc.rot2)):
+        me = etree.SubElement(rend, _hc(tag))
+        for i in range(1, 7):
+            me.set("e%d" % i, getattr(m, "e%d" % i))
+    ls = rc.line_shape
+    lsh = etree.SubElement(e, _hp("lineShape"))
+    for k, v in (("color", ls.color), ("width", str(ls.width)), ("style", ls.style),
+                 ("endCap", "FLAT"), ("headStyle", "NORMAL"), ("tailStyle", "NORMAL"),
+                 ("headfill", "1"), ("tailfill", "1"), ("headSz", "MEDIUM_MEDIUM"),
+                 ("tailSz", "MEDIUM_MEDIUM"), ("outlineStyle", "NORMAL"), ("alpha", "0")):
+        lsh.set(k, v)
+    sh = etree.SubElement(e, _hp("shadow"))
+    for k, v in (("type", "NONE"), ("color", "#000000"), ("offsetX", "0"),
+                 ("offsetY", "0"), ("alpha", "0")):
+        sh.set(k, v)
+    _write_draw_text(e, rc.draw_text, state)
+
+
+def _write_draw_text(rect_el, dt, state):
+    if dt is None:
+        return
+    if state is None:
+        state = {"para_id": 0, "tbl_id": 0}
+    dte = etree.SubElement(rect_el, _hp("drawText"))
+    dte.set("lastWidth", str(dt.last_width)); dte.set("name", ""); dte.set("editable", "0")
+    sl = dt.sub_list
+    sle = etree.SubElement(dte, _hp("subList"))
+    for k, v in (("id", ""), ("textDirection", "HORIZONTAL"), ("lineWrap", "BREAK"),
+                 ("vertAlign", sl.vert_align), ("linkListIDRef", "0"),
+                 ("linkListNextIDRef", "0"), ("textWidth", "0"), ("textHeight", "0"),
+                 ("hasTextRef", "0"), ("hasNumRef", "0")):
+        sle.set(k, v)
+    for para in sl.paras:
+        _write_paragraph(sle, para, state)
 
 
 def _write_line(run_el, ln):

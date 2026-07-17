@@ -12,6 +12,7 @@ from .model import (
     HwpSectionDef, HwpShapeComponent, HwpLineShape, HwpDrawing, HwpPicture,
     HwpDocProperties, HwpCompatDocument, HwpPageHide,
     HwpBookmark, HwpNewNumbering, HwpBullet,
+    HwpRect, HwpDrawText,
 )
 
 _ALIGN_MAP = {
@@ -347,8 +348,22 @@ def _matrix_values(m_el):
 def _parse_shape_component(comp_el):
     center = comp_el.find("Coord[@attribute-name='rotation_center']")
     trans = comp_el.find("Matrix[@attribute-name='translation']")
-    scaler = comp_el.find(".//Matrix[@attribute-name='scaler']")
-    rotator = comp_el.find(".//Matrix[@attribute-name='rotator']")
+    srms = comp_el.findall(".//ScaleRotationMatrix")
+
+    def _pair(idx):
+        if idx < len(srms):
+            return (_matrix_values(srms[idx].find("Matrix[@attribute-name='scaler']")),
+                    _matrix_values(srms[idx].find("Matrix[@attribute-name='rotator']")))
+        return ([1.0, 0.0, 0.0, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+
+    # fall back to the pre-existing flat lookup when there is no ScaleRotationMatrix
+    if srms:
+        (sca1, rot1) = _pair(0)
+        (sca2, rot2) = _pair(1)
+    else:
+        sca1 = _matrix_values(comp_el.find(".//Matrix[@attribute-name='scaler']"))
+        rot1 = _matrix_values(comp_el.find(".//Matrix[@attribute-name='rotator']"))
+        sca2, rot2 = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
     return HwpShapeComponent(
         angle=_int(comp_el.get("angle")),
         flip=_int(comp_el.get("flip")),
@@ -359,8 +374,8 @@ def _parse_shape_component(comp_el):
         center_x=_int(center.get("x")) if center is not None else 0,
         center_y=_int(center.get("y")) if center is not None else 0,
         trans_matrix=_matrix_values(trans),
-        scaler_matrix=_matrix_values(scaler),
-        rotator_matrix=_matrix_values(rotator),
+        scaler_matrix=sca1, rotator_matrix=rot1,
+        scaler_matrix2=sca2, rotator_matrix2=rot2,
     )
 
 
@@ -416,14 +431,36 @@ def _parse_picture(comp_el):
     )
 
 
+_VALIGN_BOX = {"top": "TOP", "middle": "CENTER", "bottom": "BOTTOM"}
+
+
+def _parse_rect(comp_el):
+    bl = comp_el.find("BorderLine[@attribute-name='border']")
+    tpl = comp_el.find("TextboxParagraphList")
+    paras = []
+    if tpl is not None:
+        for p_el in tpl.findall("Paragraph"):
+            paras.append(parse_paragraph(p_el))
+    dt = HwpDrawText(
+        last_width=_int(tpl.get("maxwidth")) if tpl is not None else 0,
+        vert_align=_VALIGN_BOX.get((tpl.get("valign") if tpl is not None else "middle"), "CENTER"),
+        paragraphs=paras,
+    )
+    return HwpRect(
+        line_color=(bl.get("color") if bl is not None else None) or "#000000",
+        line_width=_int(bl.get("width")) if bl is not None else 0,
+        draw_text=dt,
+    )
+
+
 def _parse_drawing(gso_el):
-    """GShapeObjectControl -> HwpDrawing. Slice A+B: line ($lin) and picture
-    ($pic); other kinds return None (skipped)."""
+    """GShapeObjectControl -> HwpDrawing. Slice A+B+C: line ($lin), picture
+    ($pic), rectangle ($rec); other kinds return None (skipped)."""
     comp = gso_el.find("ShapeComponent")
     if comp is None:
         return None
     chid0 = (comp.get("chid0") or comp.get("chid") or "").strip()
-    if chid0 not in ("$lin", "$pic"):
+    if chid0 not in ("$lin", "$pic", "$rec"):
         return None
     common = dict(
         instance_id=_int(gso_el.get("instance-id")),
@@ -449,6 +486,8 @@ def _parse_drawing(gso_el):
     )
     if chid0 == "$lin":
         return HwpDrawing(kind="line", line=_parse_line_shape(comp), **common)
+    if chid0 == "$rec":
+        return HwpDrawing(kind="rect", rect=_parse_rect(comp), **common)
     return HwpDrawing(kind="pic", picture=_parse_picture(comp), **common)
 
 

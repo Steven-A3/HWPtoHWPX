@@ -1,9 +1,11 @@
-"""Map an HWP drawing (GShapeObjectControl) to an OWPML Line or Pic."""
+"""Map an HWP drawing (GShapeObjectControl) to an OWPML Line, Pic, or Rect."""
 from ..owpml.model import (
     Line, Offset, OrgSz, CurSz, Flip, RotationInfo, Matrix, RenderingInfo,
     LineShape, WinBrush, Shadow, Pt, ShapeSz, ShapePos, ShapeOutMargin,
     Pic, Img, ImgRect, ImgClip, InMargin, ImgDim, ShapeComment,
+    Rect, DrawText, SubList,
 )
+from .body import map_paragraph
 
 _TEXT_WRAP = {"front": "IN_FRONT_OF_TEXT", "back": "BEHIND_TEXT",
               "block": "TOP_AND_BOTTOM", "square": "SQUARE",
@@ -101,6 +103,26 @@ def _map_pic(hd):
     )
 
 
+def _map_rect(hd):
+    comp, rc = hd.component, hd.rect
+    dt = rc.draw_text
+    sub = SubList(vert_align=dt.vert_align,
+                  paras=[map_paragraph(p, 0) for p in dt.paragraphs])
+    common = _common_container(hd, comp, 0)
+    return Rect(
+        id=common["id"], z_order=common["z_order"], text_wrap=common["text_wrap"],
+        instid=hd.instance_id, group_level=1, ratio=0,
+        offset=common["offset"], org_sz=common["org_sz"], cur_sz=common["cur_sz"],
+        flip=common["flip"], rotation_info=common["rotation_info"],
+        rendering_info=common["rendering_info"],
+        sca2=_matrix(comp.scaler_matrix2), rot2=_matrix(comp.rotator_matrix2),
+        line_shape=LineShape(color=rc.line_color, width=rc.line_width,
+                             style="NONE", end_cap="FLAT"),
+        shadow=Shadow(),
+        draw_text=DrawText(last_width=dt.last_width, sub_list=sub),
+    )
+
+
 def map_drawing(hd):
     if hd is None or hd.component is None:
         return None
@@ -108,4 +130,6 @@ def map_drawing(hd):
         return _map_line(hd)
     if hd.kind == "pic" and hd.picture is not None:
         return _map_pic(hd)
+    if hd.kind == "rect" and hd.rect is not None:
+        return _map_rect(hd)
     return None
