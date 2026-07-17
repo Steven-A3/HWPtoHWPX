@@ -1,7 +1,7 @@
 """Serialize an OWPML Section to Contents/sectionN.xml."""
 from lxml import etree
 from ..constants import NS, XML_DECL
-from ..owpml.model import Control, Pic
+from ..owpml.model import Control, Pic, MarkpenBegin, MarkpenEnd
 
 _NSMAP = {k: v for k, v in NS.items()}
 
@@ -23,7 +23,7 @@ def _write_run(p_el, run, state):
     r.set("charPrIDRef", str(run.char_pr_id))
     if run.texts:
         te = etree.SubElement(r, _hp("t"))
-        last = None  # last control child; text after it goes to its .tail
+        last = None  # last inline child; text after it goes to its .tail
         for item in run.texts:
             if isinstance(item, Control):
                 last = etree.SubElement(te, _hp(item.kind))
@@ -31,6 +31,11 @@ def _write_run(p_el, run, state):
                     last.set("width", "0")
                     last.set("leader", "0")
                     last.set("type", "0")
+            elif isinstance(item, MarkpenBegin):
+                last = etree.SubElement(te, _hp("markpenBegin"))
+                last.set("color", item.color)
+            elif isinstance(item, MarkpenEnd):
+                last = etree.SubElement(te, _hp("markpenEnd"))
             else:  # Text
                 if last is None:
                     te.text = (te.text or "") + item.content
