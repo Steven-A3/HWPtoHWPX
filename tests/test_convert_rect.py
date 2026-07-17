@@ -126,7 +126,10 @@ def _rec_drawing_with_text():
     return _parse_drawing(gso)
 
 
-from hwp2hwpx.owpml.model import Rect, DrawText, SubList
+from hwp2hwpx.owpml.model import (
+    Rect, DrawText, SubList, Offset, OrgSz, CurSz, Flip, RotationInfo,
+    RenderingInfo, Matrix, LineShape, Shadow, Pt,
+)
 from hwp2hwpx.mapper.drawing import map_drawing
 
 
@@ -206,6 +209,45 @@ def test_writer_emits_toplevel_rect_without_text():
     assert "<hp:sz " in xml and "<hp:pos " in xml and "<hp:outMargin " in xml
     # element order: shadow, then straight to pt0 (no drawText in between)
     assert xml.index("<hp:shadow") < xml.index("<hc:pt0")
+
+
+def _identity_matrix():
+    return Matrix(e1="1", e2="0", e3="0", e4="0", e5="1", e6="0")
+
+
+def test_writer_emits_nested_rect_without_placement():
+    """Task 2's nested (container-member) rects won't be wrapped in their own
+    GShapeObjectControl, so _map_rect will leave sz/pos/out_margin (as well as
+    draw_text/sca2/rot2, covered elsewhere) as None. That branch of
+    _write_rect is otherwise unreached by any current test -- _map_rect
+    always populates sz/pos/out_margin for the real top-level rects this task
+    handles. Build the Rect directly (bypassing the mapper) to exercise the
+    None path now, before Task 2 relies on it, and confirm it doesn't
+    dereference rc.pos/rc.out_margin when they're None and doesn't emit the
+    now-absent elements."""
+    rc = Rect(
+        id=1, z_order=0, text_wrap="TOP_AND_BOTTOM", text_flow="BOTH_SIDES",
+        group_level=1, instid=99, ratio=0,
+        offset=Offset(0, 0), org_sz=OrgSz(1000, 2000), cur_sz=CurSz(1000, 2000),
+        flip=Flip(0, 0),
+        rotation_info=RotationInfo(angle=0, center_x=500, center_y=1000, rotate_image=0),
+        rendering_info=RenderingInfo(trans=_identity_matrix(), sca=_identity_matrix(),
+                                     rot=_identity_matrix()),
+        sca2=None, rot2=None,
+        line_shape=LineShape(color="#000000", width=0, style="NONE", end_cap="FLAT"),
+        shadow=Shadow(),
+        draw_text=None,
+        points=[Pt(0, 0), Pt(1000, 0), Pt(1000, 2000), Pt(0, 2000)],
+        sz=None, pos=None, out_margin=None,
+    )
+    xml = _run_xml(Run(char_pr_id=0, drawing=rc))   # must not raise
+    assert "<hp:rect " in xml and 'groupLevel="1"' in xml
+    assert xml.count("<hc:scaMatrix") == 1   # no 2nd pair
+    assert "<hp:drawText" not in xml
+    assert xml.count("<hc:pt0") == 1 and xml.count("<hc:pt3") == 1
+    assert "<hp:sz" not in xml
+    assert "<hp:pos" not in xml
+    assert "<hp:outMargin" not in xml
 
 
 def test_sample2013_toplevel_rects_no_text(tmp_path):
