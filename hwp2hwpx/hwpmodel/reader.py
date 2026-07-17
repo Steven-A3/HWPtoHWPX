@@ -436,7 +436,10 @@ def parse_paragraph(para_el):
     """Build one HwpParagraph. Walk LineSeg children in reading order,
     grouping consecutive Text + inline ControlChar (fwSpace/lineBreak) that
     share a charshape-id into one HwpRun; a charshape-id change, a table, or
-    a PARAGRAPH_BREAK starts a new run."""
+    a PARAGRAPH_BREAK starts a new run. Finally, when the paragraph mark
+    (PARAGRAPH_BREAK) carries a different char shape than the last visible run,
+    append a trailing empty run for it — matching Hancom's one-run-per-charshape-
+    segment output (the mark segment has no visible text)."""
     runs = []
     cur_cs = None
     cur_contents = []
