@@ -18,6 +18,19 @@ def _hc(tag):
     return "{%s}%s" % (NS["hc"], tag)
 
 
+def _run_has_inline_object(run):
+    """True when the run carries an inline (treatAsChar=1) object — a table
+    (always emitted inline) or a drawing whose pos.treat_as_char is 1. Such a
+    run gets a trailing empty <hp:t/> anchor, matching Hancom."""
+    if getattr(run, "table", None) is not None:
+        return True
+    d = getattr(run, "drawing", None)
+    if d is not None:
+        pos = getattr(d, "pos", None)
+        return pos is not None and getattr(pos, "treat_as_char", 0) == 1
+    return False
+
+
 def _write_run(p_el, run, state):
     r = etree.SubElement(p_el, _hp("run"))
     r.set("charPrIDRef", str(run.char_pr_id))
@@ -48,6 +61,9 @@ def _write_run(p_el, run, state):
             _write_pic(r, run.drawing)
         else:
             _write_line(r, run.drawing)
+    if _run_has_inline_object(run):
+        # inline object anchor: Hancom writes a trailing empty <hp:t/> here.
+        etree.SubElement(r, _hp("t"))
 
 
 def _write_sec_pr(run_el, sp):
