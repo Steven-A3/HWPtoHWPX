@@ -3,8 +3,6 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
-PAIRS = [("samples/3.", None), ("samples/4.", None)]
-
 
 def _score(prefix, tmp_path):
     hwp = glob.glob(prefix + "*.hwp")[0]
