@@ -32,8 +32,44 @@ def container_xml():
         b'<ocf:rootfile full-path="Contents/content.hpf"'
         b' media-type="application/hwpml-package+xml"/>'
         b'<ocf:rootfile full-path="Preview/PrvText.txt" media-type="text/plain"/>'
+        b'<ocf:rootfile full-path="META-INF/container.rdf" media-type="application/rdf+xml"/>'
         b'</ocf:rootfiles></ocf:container>'
     )
+
+
+_RDF_PKG_NS = "http://www.hancom.co.kr/hwpml/2016/meta/pkg#"
+
+
+def _rdf_has_part(resource):
+    return (
+        '<rdf:Description rdf:about="">'
+        '<ns0:hasPart xmlns:ns0="%s" rdf:resource="%s"/>'
+        '</rdf:Description>'
+    ) % (_RDF_PKG_NS, resource)
+
+
+def _rdf_type(about, type_local):
+    return (
+        '<rdf:Description rdf:about="%s">'
+        '<rdf:type rdf:resource="%s%s"/>'
+        '</rdf:Description>'
+    ) % (about, _RDF_PKG_NS, type_local)
+
+
+def container_rdf(section_count):
+    parts = [_rdf_has_part("Contents/header.xml")]
+    parts.append(_rdf_type("Contents/header.xml", "HeaderFile"))
+    for i in range(section_count):
+        resource = "Contents/section%d.xml" % i
+        parts.append(_rdf_has_part(resource))
+        parts.append(_rdf_type(resource, "SectionFile"))
+    parts.append(_rdf_type("", "Document"))
+    body = (
+        '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+        + "".join(parts)
+        + "</rdf:RDF>"
+    )
+    return _doc(body.encode("utf-8"))
 
 
 def manifest_xml():

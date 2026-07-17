@@ -31,6 +31,7 @@ def write_hwpx(doc, out_path):
         "Contents/content.hpf": package_parts.content_hpf(
             doc.metadata, len(doc.sections), getattr(doc, "bin_items", [])),
         "META-INF/container.xml": package_parts.container_xml(),
+        "META-INF/container.rdf": package_parts.container_rdf(len(doc.sections)),
         "META-INF/manifest.xml": package_parts.manifest_xml(),
         "Preview/PrvText.txt": package_parts.prv_text(doc.sections),
     }
