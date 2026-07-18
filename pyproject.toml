@@ -13,8 +13,8 @@ hwp2hwpx = "hwp2hwpx.cli:entrypoint"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.setuptools]
-packages = ["hwp2hwpx"]
+[tool.setuptools.packages.find]
+include = ["hwp2hwpx*"]
 
 [build-system]
 requires = ["setuptools>=68"]
