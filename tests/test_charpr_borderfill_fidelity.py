@@ -17,7 +17,11 @@ def _charpr_refs(header_xml):
     return [cp.get("borderFillIDRef") for cp in root.iter("{%s}charPr" % _HH)]
 
 
-@pytest.mark.parametrize("pre", ["samples/3.", "samples/4.", "samples/★131008"])
+# samples 3/4/★131008 get no null-insert (raw offset-68 id == Hancom charPr ref);
+# 2013 IS a null-insert doc, so its charPr refs are offset-68 + 1 (supplied by
+# normalize_borderfill_null) — included here to lock that cross-cutting path.
+@pytest.mark.parametrize("pre", ["samples/3.", "samples/4.", "samples/★131008",
+                                 "samples/20131106"])
 def test_charpr_border_fill_refs_match_hancom(pre):
     hwp = glob.glob(pre + "*.hwp")[0]
     ref = glob.glob(pre + "*.hwpx")[0]
