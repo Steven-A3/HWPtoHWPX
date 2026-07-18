@@ -15,6 +15,8 @@ _MEDIA = {"bmp": "image/bmp", "png": "image/png", "jpg": "image/jpg",
           "jpeg": "image/jpeg", "gif": "image/gif", "wmf": "image/x-wmf",
           "tiff": "image/tiff", "tif": "image/tiff"}
 
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
 
 def _iter_all_paragraphs(paragraphs):
     for para in paragraphs:
@@ -111,3 +113,24 @@ def extract_bin_items(hwp_path, hwp_doc):
             data=data,
         ))
     return items, id_to_index
+
+
+def _preview_png_or_none(data):
+    """Return `data` iff it is a PNG (by signature), else None."""
+    return data if data.startswith(_PNG_SIGNATURE) else None
+
+
+def extract_preview_image(hwp_path):
+    """Return the source HWP's PrvImage stream bytes iff they are a PNG, else
+    None.
+
+    Hancom re-renders the preview at export, so this is a best-effort *usable*
+    thumbnail, not a byte-match of Hancom's output. Non-PNG sources (GIF/BMP)
+    are skipped because an honest transcode to .png would need an imaging
+    dependency the project deliberately avoids.
+    """
+    proc = subprocess.run([_hwp5proc(), "cat", hwp_path, "PrvImage"],
+                          capture_output=True)
+    if proc.returncode != 0:
+        return None
+    return _preview_png_or_none(proc.stdout)
