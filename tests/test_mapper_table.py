@@ -48,5 +48,7 @@ def test_map_document_wires_border_fills():
     di = HwpDocInfo(border_fills=[HwpBorderFill(index=0, borders=[
         HwpBorder(kind="left", stroke_type="solid", width="0.4mm", color="#000000")])])
     doc = map_document(HwpDocument(docinfo=di, sections=[HwpSection(paragraphs=[])]))
-    assert len(doc.header.border_fills) == 1
-    assert doc.header.border_fills[0].borders[0].type == "SOLID"
+    # source's only border_fill isn't the canonical null (only "left" set), so
+    # normalize_borderfill_null prepends the canonical null and shifts it to id=2.
+    assert len(doc.header.border_fills) == 2
+    assert doc.header.border_fills[1].borders[0].type == "SOLID"

@@ -8,6 +8,7 @@ from .fonts import map_fonts
 from .char_pr import map_char_shapes
 from .para_pr import map_para_shapes
 from .border_fill import map_border_fills
+from .borderfill_null import normalize_borderfill_null
 from .style import map_styles
 from .tab import map_tab_defs
 from .bullet import map_bullets
@@ -118,4 +119,5 @@ def map_document(hwp_doc, title="", bin_index=None):
         )
     else:
         metadata = Metadata(title=title)
-    return OwpmlDocument(header=header, sections=sections, metadata=metadata)
+    doc = OwpmlDocument(header=header, sections=sections, metadata=metadata)
+    return normalize_borderfill_null(doc)
