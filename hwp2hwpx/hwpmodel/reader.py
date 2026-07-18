@@ -13,6 +13,7 @@ from .model import (
     HwpDocProperties, HwpCompatDocument, HwpPageHide,
     HwpBookmark, HwpNewNumbering, HwpBullet,
     HwpRect, HwpDrawText,
+    HwpNumbering, HwpNumberingLevel,
 )
 
 _ALIGN_MAP = {
@@ -180,6 +181,28 @@ def _parse_bullets(id_mappings):
     return out
 
 
+def _parse_numberings(id_mappings):
+    out = []
+    for el in id_mappings.findall("Numbering"):
+        levels = []
+        arr = el.find("Array")
+        if arr is not None:
+            for lv in arr.findall("NumberingLevel"):
+                levels.append(HwpNumberingLevel(
+                    align=(lv.get("align") or "left").lower(),
+                    auto_width=_int(lv.get("auto-width")),
+                    auto_indent=_int(lv.get("auto-indent")),
+                    text_offset=_int(lv.get("space")),
+                    width_adjust=_int(lv.get("width-correction")),
+                    char_shape_id=_int(lv.get("charshape-id"), -1),
+                    flags=_hex_int(lv.get("flags")),
+                    text=lv.get("numbering-format") or "",
+                ))
+        out.append(HwpNumbering(start=_int(el.get("starting-number")),
+                                levels=levels))
+    return out
+
+
 def _parse_doc_properties(root):
     el = root.find(".//DocumentProperties")
     if el is None:
@@ -266,6 +289,7 @@ def read_docinfo(xml_bytes):
                       styles=_parse_styles(id_mappings),
                       tab_defs=_parse_tab_defs(id_mappings),
                       bullets=_parse_bullets(id_mappings),
+                      numberings=_parse_numberings(id_mappings),
                       doc_properties=_parse_doc_properties(root),
                       compat=_parse_compat(root))
 

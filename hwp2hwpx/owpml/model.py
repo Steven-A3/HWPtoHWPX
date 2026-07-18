@@ -110,6 +110,27 @@ class Bullet:
 
 
 @dataclass
+class NumHead:
+    level: int = 1
+    align: str = "LEFT"
+    use_inst_width: int = 0
+    auto_indent: int = 0
+    width_adjust: int = 0
+    text_offset: int = 0
+    num_format: str = "DIGIT"
+    char_pr_id: int = 0
+    checkable: int = 0
+    text: str = ""
+
+
+@dataclass
+class ParaNumbering:
+    id: int = 1
+    start: int = 0
+    heads: list = field(default_factory=list)
+
+
+@dataclass
 class Grid:
     line_grid: int = 0
     char_grid: int = 0
@@ -367,6 +388,7 @@ class Header:
     styles: list = field(default_factory=list)
     tab_defs: list = field(default_factory=list)
     bullets: list = field(default_factory=list)
+    numberings: list = field(default_factory=list)
     begin_num: "BeginNum" = None
     compat: "CompatDocument" = None
 

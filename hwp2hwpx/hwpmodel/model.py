@@ -103,6 +103,24 @@ class HwpBullet:
 
 
 @dataclass
+class HwpNumberingLevel:
+    align: str = "left"
+    auto_width: int = 0
+    auto_indent: int = 0
+    text_offset: int = 0
+    width_adjust: int = 0
+    char_shape_id: int = -1
+    flags: int = 0
+    text: str = ""
+
+
+@dataclass
+class HwpNumbering:
+    start: int = 0
+    levels: list = field(default_factory=list)
+
+
+@dataclass
 class HwpRangeTag:
     start: int = 0
     end: int = 0
@@ -219,6 +237,7 @@ class HwpDocInfo:
     styles: list = field(default_factory=list)
     tab_defs: list = field(default_factory=list)
     bullets: list = field(default_factory=list)
+    numberings: list = field(default_factory=list)
     doc_properties: "HwpDocProperties" = None
     compat: "HwpCompatDocument" = None
 
