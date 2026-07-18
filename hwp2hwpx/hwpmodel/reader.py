@@ -69,6 +69,33 @@ def hwp5_char_shapes(hwp_path):
     return out
 
 
+# The character shape's border/fill id is a UINT16 (little-endian) at payload
+# offset 68 of HWPTAG_CHAR_SHAPE — right after the four COLORREF fields
+# (text/underline/shade/shadow colors, bytes 52-67). pyhwp parses the record but
+# does not surface this field, so we read it from the raw payload.
+_CHAR_SHAPE_BORDER_FILL_OFFSET = 68
+
+
+def _payload_bytes(rec):
+    return bytes(int(b, 16)
+                 for chunk in rec.get("payload", []) for b in chunk.split())
+
+
+def _cs_border_fill(payload):
+    off = _CHAR_SHAPE_BORDER_FILL_OFFSET
+    if len(payload) < off + 2:
+        return 1
+    return int.from_bytes(payload[off:off + 2], "little")
+
+
+def hwp5_char_shape_border_fills(hwp_path):
+    """Per-CharShape border/fill id (1-based, HWPX-compatible), in CharShape
+    index order, read from the raw HWPTAG_CHAR_SHAPE payloads."""
+    recs = _hwp5proc_models(hwp_path, "DocInfo")
+    return [_cs_border_fill(_payload_bytes(r))
+            for r in recs if r.get("type") == "CharShape"]
+
+
 # Non-text LineSeg items (table/drawing objects and extended controls) that
 # occupy a fixed 8-WCHAR slot in the char-position stream. Kept for reference;
 # _item_width() falls back to 8 for any tag that isn't "Text"/"ControlChar",
@@ -323,7 +350,7 @@ def _parse_compat(root):
     return HwpCompatDocument(target=_int(el.get("target")))
 
 
-def read_docinfo(xml_bytes):
+def read_docinfo(xml_bytes, char_border_fills=None):
     root = etree.fromstring(xml_bytes)
     id_mappings = root.find(".//IdMappings")
     if id_mappings is None:
@@ -382,6 +409,10 @@ def read_docinfo(xml_bytes):
             level=_int(el.get("level")),
             tab_def_id=_int(el.get("tabdef-id")),
         ))
+
+    if char_border_fills and len(char_border_fills) == len(char_shapes):
+        for cs, bf in zip(char_shapes, char_border_fills):
+            cs.border_fill_id = bf
 
     return HwpDocInfo(fonts=fonts, char_shapes=char_shapes,
                       para_shapes=para_shapes,
@@ -1080,8 +1111,8 @@ def _build_char_shape_map(root, char_shapes):
     return {p: arr for p, arr in zip(paras, char_shapes)}
 
 
-def read_document(xml_bytes, char_shapes=None):
-    docinfo = read_docinfo(xml_bytes)
+def read_document(xml_bytes, char_shapes=None, char_border_fills=None):
+    docinfo = read_docinfo(xml_bytes, char_border_fills)
     root = etree.fromstring(xml_bytes)
     cs_map = _build_char_shape_map(root, char_shapes)
     sections = []

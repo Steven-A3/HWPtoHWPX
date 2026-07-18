@@ -36,6 +36,7 @@ class HwpCharShape:
     rel_sz: dict = field(default_factory=dict)      # HWP-keyed -> int (RelativeSize)
     offset: dict = field(default_factory=dict)      # HWP-keyed -> int (Position)
     shade_color: str = "#ffffff"
+    border_fill_id: int = 1
     underline_type: str = "NONE"
     underline_shape: str = "SOLID"
     underline_color: str = "#000000"
