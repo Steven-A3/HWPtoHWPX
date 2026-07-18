@@ -38,7 +38,7 @@ def _root(section):
 
 
 def test_pic_child_order_and_namespaces():
-    sec = Section(paras=[Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, drawing=_pic())])])
+    sec = Section(paras=[Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[_pic()])])])
     pic = _root(sec).find(".//" + _qp("pic"))
     assert pic is not None and pic.get("id") == "111" and pic.get("reverse") == "0"
     kids = [etree.QName(c).localname for c in pic]
@@ -61,7 +61,7 @@ def test_line_still_emitted_via_dispatch():
               line_shape=LineShape(), win_brush=WinBrush(), shadow=Shadow(),
               start_pt=Pt(0, 0), end_pt=Pt(1, 1), sz=ShapeSz(), pos=ShapePos(),
               out_margin=ShapeOutMargin())
-    sec = Section(paras=[Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, drawing=ln)])])
+    sec = Section(paras=[Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[ln])])])
     root = _root(sec)
     assert root.find(".//" + _qp("line")) is not None
     assert root.find(".//" + _qp("pic")) is None

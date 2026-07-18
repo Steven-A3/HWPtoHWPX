@@ -156,7 +156,7 @@ def test_nested_line_child_dropped_not_crashed():
     assert [type(c).__name__ for c in m.children] == ["Rect"]
 
     p_el = etree.Element("{%s}p" % NS["hp"], nsmap={"hp": NS["hp"], "hc": NS["hc"]})
-    _write_run(p_el, Run(char_pr_id=0, drawing=m), state=None)   # must not raise
+    _write_run(p_el, Run(char_pr_id=0, texts=[m]), state=None)   # must not raise
     xml = etree.tostring(p_el, encoding="unicode")
     assert "<hp:container " in xml
     assert "<hp:rect " in xml

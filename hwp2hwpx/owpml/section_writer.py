@@ -2,7 +2,8 @@
 from lxml import etree
 from ..constants import NS, XML_DECL
 from ..owpml.model import (
-    Control, Pic, Rect, Container, MarkpenBegin, MarkpenEnd, PageHiding, Bookmark, NewNum,
+    Control, Table, Line, Pic, Rect, Container, MarkpenBegin, MarkpenEnd,
+    PageHiding, Bookmark, NewNum,
 )
 
 _NSMAP = {k: v for k, v in NS.items()}
@@ -18,19 +19,6 @@ def _hp(tag):
 
 def _hc(tag):
     return "{%s}%s" % (NS["hc"], tag)
-
-
-def _run_has_inline_object(run):
-    """True when the run carries an inline (treatAsChar=1) object — a table
-    (always emitted inline) or a drawing whose pos.treat_as_char is 1. Such a
-    run gets a trailing empty <hp:t/> anchor, matching Hancom."""
-    if getattr(run, "table", None) is not None:
-        return True
-    d = getattr(run, "drawing", None)
-    if d is not None:
-        pos = getattr(d, "pos", None)
-        return pos is not None and getattr(pos, "treat_as_char", 0) == 1
-    return False
 
 
 def _write_ctrl(run_el, c):
@@ -52,47 +40,67 @@ def _write_ctrl(run_el, c):
         nn.set("numType", c.num_type)
 
 
+def _write_t_span(r, span):
+    """Emit one <hp:t> for a maximal run of text/inline-control/markpen items.
+    An empty span (a lone Text("")) yields an empty <hp:t/> anchor."""
+    te = etree.SubElement(r, _hp("t"))
+    last = None  # last inline child; text after it goes to its .tail
+    for item in span:
+        if isinstance(item, Control):
+            last = etree.SubElement(te, _hp(item.kind))
+            if item.kind == "tab":
+                last.set("width", "0")
+                last.set("leader", "0")
+                last.set("type", "0")
+            elif item.kind == "titleMark":
+                last.set("ignore", "1")
+        elif isinstance(item, MarkpenBegin):
+            last = etree.SubElement(te, _hp("markpenBegin"))
+            last.set("color", item.color)
+        elif isinstance(item, MarkpenEnd):
+            last = etree.SubElement(te, _hp("markpenEnd"))
+        else:  # Text; "" leaves the element empty -> self-closing <hp:t/>
+            if not item.content:
+                continue
+            if last is None:
+                te.text = (te.text or "") + item.content
+            else:
+                last.tail = (last.tail or "") + item.content
+
+
+def _write_object(r, obj, state):
+    if isinstance(obj, Table):
+        _write_table(r, obj, state)
+    elif isinstance(obj, Pic):
+        _write_pic(r, obj)
+    elif isinstance(obj, Rect):
+        _write_rect(r, obj, state)
+    elif isinstance(obj, Container):
+        _write_container(r, obj, state)
+    else:
+        _write_line(r, obj)
+
+
 def _write_run(p_el, run, state):
     r = etree.SubElement(p_el, _hp("run"))
     r.set("charPrIDRef", str(run.char_pr_id))
     for c in getattr(run, "ctrls", ()):
         _write_ctrl(r, c)
-    if run.texts:
-        te = etree.SubElement(r, _hp("t"))
-        last = None  # last inline child; text after it goes to its .tail
-        for item in run.texts:
-            if isinstance(item, Control):
-                last = etree.SubElement(te, _hp(item.kind))
-                if item.kind == "tab":
-                    last.set("width", "0")
-                    last.set("leader", "0")
-                    last.set("type", "0")
-                elif item.kind == "titleMark":
-                    last.set("ignore", "1")
-            elif isinstance(item, MarkpenBegin):
-                last = etree.SubElement(te, _hp("markpenBegin"))
-                last.set("color", item.color)
-            elif isinstance(item, MarkpenEnd):
-                last = etree.SubElement(te, _hp("markpenEnd"))
-            else:  # Text
-                if last is None:
-                    te.text = (te.text or "") + item.content
-                else:
-                    last.tail = (last.tail or "") + item.content
-    if getattr(run, "table", None) is not None:
-        _write_table(r, run.table, state)
-    if getattr(run, "drawing", None) is not None:
-        if isinstance(run.drawing, Pic):
-            _write_pic(r, run.drawing)
-        elif isinstance(run.drawing, Rect):
-            _write_rect(r, run.drawing, state)
-        elif isinstance(run.drawing, Container):
-            _write_container(r, run.drawing, state)
-        else:
-            _write_line(r, run.drawing)
-    if _run_has_inline_object(run):
-        # inline object anchor: Hancom writes a trailing empty <hp:t/> here.
-        etree.SubElement(r, _hp("t"))
+    # Walk the interleaved stream: text/inline-controls accumulate into a
+    # <hp:t> span; an object closes the current span (only if non-empty),
+    # emits inline, then a fresh span begins. A materialized empty span
+    # (Text("")) emits an empty <hp:t/> anchor.
+    span = []
+    for item in run.texts:
+        if isinstance(item, (Table, Pic, Rect, Line, Container)):
+            if span:
+                _write_t_span(r, span)
+                span = []
+            _write_object(r, item, state)
+        else:  # Text / Control / Markpen*
+            span.append(item)
+    if span:
+        _write_t_span(r, span)
     for c in getattr(run, "ctrls_after", ()):
         # trailing ctrls (e.g. bookmark) sit after the run's <hp:t>.
         _write_ctrl(r, c)

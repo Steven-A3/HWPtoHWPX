@@ -13,6 +13,6 @@ def test_drawing_defaults():
 
 
 def test_hwprun_carries_drawing():
-    r = HwpRun(char_shape_id=0, drawing=HwpDrawing(instance_id=42))
+    r = HwpRun(char_shape_id=0, contents=[HwpDrawing(instance_id=42)])
     assert r.drawing.instance_id == 42
     assert r.table is None

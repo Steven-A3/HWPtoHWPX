@@ -15,7 +15,7 @@ def _section_with_table():
                           runs=[Run(char_pr_id=3, texts=[Text("셀")])])])
     table = Table(id=0, row_cnt=1, col_cnt=2, cell_spacing=0, border_fill_id=4,
                   width=100, height=50, rows=[TableRow(cells=[cell])])
-    para = Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[], table=table)])
+    para = Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[table])])
     return Section(paras=[para])
 
 

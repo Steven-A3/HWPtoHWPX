@@ -181,7 +181,7 @@ def _run_xml(run):
 
 def test_writer_emits_rect_with_drawtext():
     rect = map_drawing(_rec_drawing_with_text())
-    xml = _run_xml(Run(char_pr_id=0, drawing=rect))
+    xml = _run_xml(Run(char_pr_id=0, texts=[rect]))
     assert "<hp:rect " in xml and 'ratio="0"' in xml and 'groupLevel="0"' in xml
     assert xml.count("<hc:scaMatrix") == 2   # both matrix pairs
     assert "<hp:drawText " in xml and "<hp:subList " in xml
@@ -201,7 +201,7 @@ def test_writer_emits_toplevel_rect_without_text():
     outline points + sz/pos/outMargin, groupLevel="0"."""
     root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
     rect = map_drawing(_parse_drawing(_first_rec_gso(root)))
-    xml = _run_xml(Run(char_pr_id=0, drawing=rect))
+    xml = _run_xml(Run(char_pr_id=0, texts=[rect]))
     assert "<hp:rect " in xml and 'groupLevel="0"' in xml
     assert xml.count("<hc:scaMatrix") == 1   # no 2nd pair
     assert "<hp:drawText" not in xml
@@ -240,7 +240,7 @@ def test_writer_emits_nested_rect_without_placement():
         points=[Pt(0, 0), Pt(1000, 0), Pt(1000, 2000), Pt(0, 2000)],
         sz=None, pos=None, out_margin=None,
     )
-    xml = _run_xml(Run(char_pr_id=0, drawing=rc))   # must not raise
+    xml = _run_xml(Run(char_pr_id=0, texts=[rc]))   # must not raise
     assert "<hp:rect " in xml and 'groupLevel="1"' in xml
     assert xml.count("<hc:scaMatrix") == 1   # no 2nd pair
     assert "<hp:drawText" not in xml

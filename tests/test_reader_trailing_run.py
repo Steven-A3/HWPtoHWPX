@@ -38,6 +38,7 @@ def test_no_trailing_run_for_table_terminated_paragraph():
              '</TableCell></TableRow></TableBody></TableControl>'
              '<ControlChar name="PARAGRAPH_BREAK" charshape-id="34" code="13" kind="CHAR"/>')
     p = _para(inner)
-    assert all(r.contents == [] for r in p.runs)
-    # exactly the table run, no appended empty text run
+    # exactly the table run (table + empty <t/> anchor), no appended empty run
     assert len(p.runs) == 1
+    assert p.runs[0].table is not None
+    assert p.runs[0].text == ""   # anchor span carries no visible text

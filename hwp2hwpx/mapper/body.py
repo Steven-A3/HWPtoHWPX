@@ -17,14 +17,24 @@ from .docsettings import map_begin_num, map_compat
 from .markpen import apply_markpens
 
 
-def _map_contents(contents):
-    """HwpRun.contents (str | HwpControl) -> OWPML Run.texts (Text | Control)."""
+def _map_contents(contents, bin_index=None):
+    """HwpRun.contents (str | HwpControl | HwpTable | HwpDrawing) -> OWPML Run.texts
+    (Text | Control | Table | drawing shape), preserving interleaved order."""
+    from ..hwpmodel.model import HwpControl, HwpTable, HwpDrawing
     out = []
     for item in contents:
         if isinstance(item, str):
             out.append(Text(item))
-        else:  # HwpControl
+        elif isinstance(item, HwpControl):
             out.append(Control(item.kind))
+        elif isinstance(item, HwpTable):
+            from .table import map_table
+            out.append(map_table(item, bin_index))
+        elif isinstance(item, HwpDrawing):
+            from .drawing import map_drawing
+            m = map_drawing(item, bin_index)
+            if m is not None:
+                out.append(m)
     return out
 
 
@@ -52,27 +62,15 @@ def _map_line_segs(line_segs):
 
 
 def map_paragraph(hpar, para_id, bin_index=None):
-    """Map one HwpParagraph to an OWPML Para. A table run becomes a Run whose
-    `table` is set (deferred import breaks the body<->table recursion cycle)."""
+    """Map one HwpParagraph to an OWPML Para. Each run's interleaved contents
+    stream is mapped in order (deferred imports break the body<->table and
+    body<->drawing recursion cycles)."""
     runs = []
     for r in hpar.runs:
-        if getattr(r, "table", None) is not None:
-            from .table import map_table
-            runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
-                            table=map_table(r.table, bin_index),
-                            ctrls=_map_ctrls(r.ctrls),
-                            ctrls_after=_map_ctrls(r.ctrls_after)))
-        elif getattr(r, "drawing", None) is not None:
-            from .drawing import map_drawing
-            runs.append(Run(char_pr_id=r.char_shape_id, texts=[],
-                            drawing=map_drawing(r.drawing, bin_index),
-                            ctrls=_map_ctrls(r.ctrls),
-                            ctrls_after=_map_ctrls(r.ctrls_after)))
-        else:
-            runs.append(Run(char_pr_id=r.char_shape_id,
-                            texts=_map_contents(r.contents),
-                            ctrls=_map_ctrls(r.ctrls),
-                            ctrls_after=_map_ctrls(r.ctrls_after)))
+        runs.append(Run(char_pr_id=r.char_shape_id,
+                        texts=_map_contents(r.contents, bin_index),
+                        ctrls=_map_ctrls(r.ctrls),
+                        ctrls_after=_map_ctrls(r.ctrls_after)))
     if not runs:
         # Hancom always emits at least one <hp:run> per <hp:p>.
         runs = [Run(char_pr_id=0, texts=[])]

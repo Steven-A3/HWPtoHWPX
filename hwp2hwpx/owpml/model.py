@@ -348,12 +348,22 @@ class LineSeg:
 
 @dataclass
 class Run:
+    # `texts` is a single ordered stream interleaving text spans (Text),
+    # inline controls / markpen markers, and objects (Table / drawing shapes).
+    # A run may hold multiple objects. An empty Text("") is an empty <hp:t/>.
     char_pr_id: int
     texts: list = field(default_factory=list)
-    table: "Table" = None
-    drawing: "Line" = None
     ctrls: list = field(default_factory=list)
     ctrls_after: list = field(default_factory=list)
+
+    @property
+    def table(self):
+        return next((t for t in self.texts if isinstance(t, Table)), None)
+
+    @property
+    def drawing(self):
+        return next((t for t in self.texts
+                     if isinstance(t, (Pic, Rect, Line, Container))), None)
 
 
 @dataclass

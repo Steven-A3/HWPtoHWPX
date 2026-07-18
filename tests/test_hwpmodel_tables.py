@@ -19,7 +19,7 @@ def test_table_structure_and_run_table():
                         paragraphs=[HwpParagraph(para_shape_id=0)])
     table = HwpTable(rows=1, cols=3, cell_spacing=0, border_fill_id=4,
                      width=300, height=50, table_rows=[HwpTableRow(cells=[cell])])
-    run = HwpRun(char_shape_id=0, table=table)
+    run = HwpRun(char_shape_id=0, contents=[table])
     assert run.table.table_rows[0].cells[0].col_span == 2
     assert HwpRun(char_shape_id=0, contents=["x"]).table is None
 

@@ -41,7 +41,7 @@ def _root(section):
 
 def test_line_emitted_with_correct_children_and_namespaces():
     sec = Section(paras=[Para(id=0, para_pr_id=0,
-                              runs=[Run(char_pr_id=0, drawing=_line())])])
+                              runs=[Run(char_pr_id=0, texts=[_line()])])])
     line = _root(sec).find(".//" + _qp("line"))
     assert line is not None
     assert line.get("id") == "111" and line.get("zOrder") == "29"

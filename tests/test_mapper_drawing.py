@@ -57,7 +57,7 @@ def test_none_and_non_line_map_to_none():
 
 def test_map_paragraph_routes_drawing_run():
     hpar = HwpParagraph(para_shape_id=0, style_id=0,
-                        runs=[HwpRun(char_shape_id=0, drawing=_line_drawing())])
+                        runs=[HwpRun(char_shape_id=0, contents=[_line_drawing()])])
     para = map_paragraph(hpar, 0)
     assert len(para.runs) == 1
     assert para.runs[0].drawing is not None

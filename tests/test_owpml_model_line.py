@@ -17,5 +17,5 @@ def test_line_and_children_defaults():
 
 
 def test_run_carries_drawing():
-    r = Run(char_pr_id=0, drawing=Line(id=9))
+    r = Run(char_pr_id=0, texts=[Line(id=9)])
     assert r.drawing.id == 9 and r.table is None

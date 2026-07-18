@@ -271,16 +271,30 @@ class HwpNewNumbering:
 
 @dataclass
 class HwpRun:
+    # `contents` is a single ordered stream interleaving text (str), inline
+    # controls (HwpControl) and objects (HwpTable / HwpDrawing). A run may hold
+    # multiple objects (e.g. several drawings sharing one char shape). An empty
+    # string "" is a materialized empty text span -> an empty <hp:t/> anchor.
     char_shape_id: int
     contents: list = field(default_factory=list)
-    table: "HwpTable" = None
-    drawing: "HwpDrawing" = None
     ctrls: list = field(default_factory=list)
     ctrls_after: list = field(default_factory=list)
 
     @property
     def text(self):
         return "".join(c for c in self.contents if isinstance(c, str))
+
+    @property
+    def tables(self):
+        return [c for c in self.contents if isinstance(c, HwpTable)]
+
+    @property
+    def table(self):
+        return next(iter(self.tables), None)
+
+    @property
+    def drawing(self):
+        return next((c for c in self.contents if isinstance(c, HwpDrawing)), None)
 
 
 @dataclass

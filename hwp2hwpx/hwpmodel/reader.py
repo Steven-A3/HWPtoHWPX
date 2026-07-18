@@ -735,10 +735,11 @@ def parse_paragraph(para_el):
             cur_contents.append(HwpControl(kind))
         elif child.tag == "TableControl":
             flush()
+            table = _parse_table(child)
+            # table is an inline (treatAsChar) object -> trailing empty <t/> anchor
             runs.append(HwpRun(
                 char_shape_id=_int(child.get("charshape-id")),
-                contents=[],
-                table=_parse_table(child),
+                contents=[table, ""],
                 ctrls=pending_ctrls,
             ))
             pending_ctrls = []
@@ -746,10 +747,12 @@ def parse_paragraph(para_el):
             drawing = _parse_drawing(child)
             if drawing is not None:
                 flush()
+                contents = [drawing]
+                if drawing.inline:   # treatAsChar=1 -> trailing empty <t/> anchor
+                    contents.append("")
                 runs.append(HwpRun(
                     char_shape_id=_int(child.get("charshape-id")),
-                    contents=[],
-                    drawing=drawing,
+                    contents=contents,
                     ctrls=pending_ctrls,
                 ))
                 pending_ctrls = []
@@ -772,7 +775,11 @@ def parse_paragraph(para_el):
         pending_ctrls = []
     last_cs = None
     for run in runs:
-        if run.contents:
+        # only a run with a visible text span (non-empty text or an inline
+        # control) anchors the trailing empty run; object-only / empty-anchor
+        # runs do not.
+        if any((isinstance(c, str) and c) or isinstance(c, HwpControl)
+               for c in run.contents):
             last_cs = run.char_shape_id
     if break_cs is not None and last_cs is not None and break_cs != last_cs:
         runs.append(HwpRun(char_shape_id=break_cs, contents=[]))
@@ -814,8 +821,8 @@ def _clamp_table_border_fill_ids(sections, border_fill_count):
     def _walk_paragraphs(paragraphs):
         for para in paragraphs:
             for run in para.runs:
-                if run.table is not None:
-                    _walk_table(run.table)
+                for table in run.tables:
+                    _walk_table(table)
 
     for sec in sections:
         _walk_paragraphs(sec.paragraphs)
@@ -864,8 +871,8 @@ def _clamp_paragraph_style_ids(sections, style_count):
         for para in paragraphs:
             para.style_id = _clamp_index(para.style_id, style_count)
             for run in para.runs:
-                if run.table is not None:
-                    for row in run.table.table_rows:
+                for table in run.tables:
+                    for row in table.table_rows:
                         for cell in row.cells:
                             _walk(cell.paragraphs)
     for sec in sections:

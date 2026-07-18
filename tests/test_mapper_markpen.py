@@ -1,4 +1,4 @@
-from hwp2hwpx.owpml.model import Run, Text, Control, MarkpenBegin, MarkpenEnd
+from hwp2hwpx.owpml.model import Run, Text, Control, MarkpenBegin, MarkpenEnd, Table
 from hwp2hwpx.hwpmodel.model import HwpRangeTag
 from hwp2hwpx.mapper.markpen import apply_markpens
 
@@ -63,6 +63,6 @@ def test_size_one_control_counts_as_width_one():
 
 def test_skips_paragraph_with_table_or_drawing_run():
     runs = [Run(char_pr_id=1, texts=[Text("abcdef")]),
-            Run(char_pr_id=2, texts=[], table=object())]
+            Run(char_pr_id=2, texts=[Table()])]
     apply_markpens(runs, [HwpRangeTag(2, 5, "#FFFFFF")])
     assert _render(runs)[0] == "abcdef"  # unchanged: non-text run present

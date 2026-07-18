@@ -1,25 +1,42 @@
-from hwp2hwpx.owpml.model import Run, Text, Table, Pic, Line, ShapePos
-from hwp2hwpx.owpml.section_writer import _run_has_inline_object
+"""The empty <hp:t/> anchor now comes from the run's interleaved contents (a
+materialized empty Text("")), not from a writer-side heuristic. These tests
+pin the writer's emission of that anchor and of inline objects."""
+from lxml import etree
+
+from hwp2hwpx.owpml.section_writer import _write_run
+from hwp2hwpx.owpml.model import Run, Text, Table
+from hwp2hwpx.constants import NS
 
 
-def test_table_run_is_inline():
-    assert _run_has_inline_object(Run(char_pr_id=0, texts=[], table=Table())) is True
+def _run_xml(run):
+    p_el = etree.Element("{%s}p" % NS["hp"], nsmap={"hp": NS["hp"], "hc": NS["hc"]})
+    _write_run(p_el, run, state={"tbl_id": 0, "para_id": 0})
+    return etree.tostring(p_el, encoding="unicode")
 
 
-def test_inline_pic_run_is_inline():
-    run = Run(char_pr_id=0, texts=[], drawing=Pic(pos=ShapePos(treat_as_char=1)))
-    assert _run_has_inline_object(run) is True
+def test_empty_text_span_emits_self_closing_t():
+    xml = _run_xml(Run(char_pr_id=0, texts=[Text("")]))
+    assert "<hp:t/>" in xml
 
 
-def test_floating_line_run_is_not_inline():
-    run = Run(char_pr_id=0, texts=[], drawing=Line(pos=ShapePos(treat_as_char=0)))
-    assert _run_has_inline_object(run) is False
+def test_table_then_empty_span_emits_tbl_then_anchor():
+    xml = _run_xml(Run(char_pr_id=0, texts=[Table(), Text("")]))
+    assert xml.index("<hp:tbl") < xml.index("<hp:t/>")
 
 
-def test_plain_text_run_is_not_inline():
-    assert _run_has_inline_object(Run(char_pr_id=5, texts=[Text("가나다")])) is False
+def test_object_without_trailing_empty_span_has_no_anchor_t():
+    # a run holding only an object (no empty Text) emits no <hp:t> at all.
+    xml = _run_xml(Run(char_pr_id=0, texts=[Table()]))
+    assert "<hp:t/>" not in xml and "<hp:t>" not in xml
 
 
-def test_drawing_with_no_pos_is_not_inline():
-    run = Run(char_pr_id=0, texts=[], drawing=Pic(pos=None))
-    assert _run_has_inline_object(run) is False
+def test_plain_text_run_emits_single_t():
+    xml = _run_xml(Run(char_pr_id=5, texts=[Text("가나다")]))
+    assert xml.count("<hp:t>") == 1 and "가나다" in xml
+
+
+def test_text_then_object_then_empty_span():
+    xml = _run_xml(Run(char_pr_id=0, texts=[Text("a"), Table(), Text("")]))
+    # <t>a</t> before the tbl, empty <t/> after it
+    assert xml.index("<hp:t>a</hp:t>") < xml.index("<hp:tbl")
+    assert xml.index("<hp:tbl") < xml.index("<hp:t/>")

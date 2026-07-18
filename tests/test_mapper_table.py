@@ -26,7 +26,7 @@ def test_map_table_structure():
 
 
 def test_map_paragraph_with_table_run():
-    hpar = HwpParagraph(para_shape_id=0, runs=[HwpRun(char_shape_id=0, table=_table())])
+    hpar = HwpParagraph(para_shape_id=0, runs=[HwpRun(char_shape_id=0, contents=[_table()])])
     para = map_paragraph(hpar, 7)
     assert para.id == 7
     assert para.runs[0].table is not None
