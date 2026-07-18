@@ -2,6 +2,7 @@
 import os
 import sys
 import subprocess
+import json
 from lxml import etree
 from .model import (
     HwpFont, HwpPanose, HwpCharShape, HwpParaShape, HwpDocInfo,
@@ -35,6 +36,91 @@ def _hwp5proc():
 def hwp5_xml(hwp_path):
     """Return pyhwp's full XML dump of the parsed HWP record tree."""
     return subprocess.check_output([_hwp5proc(), "xml", hwp_path])
+
+
+def _hwp5proc_models(hwp_path, stream):
+    """Run `hwp5proc models` on a single stream and parse its JSON array."""
+    proc = subprocess.run([_hwp5proc(), "models", hwp_path, stream],
+                           capture_output=True)
+    return json.loads(proc.stdout)
+
+
+def _section_streams(hwp_path):
+    """List BodyText/SectionN storage streams, in section order."""
+    proc = subprocess.run([_hwp5proc(), "ls", hwp_path],
+                           capture_output=True, text=True)
+    return sorted(s for s in proc.stdout.split() if s.startswith("BodyText/Section"))
+
+
+def hwp5_char_shapes(hwp_path):
+    """Per-paragraph [(position, charshape_id), ...] arrays in document order
+    (all paragraphs, top-level and nested), from HWPTAG_PARA_CHAR_SHAPE."""
+    out = []
+    for stream in _section_streams(hwp_path):
+        recs = _hwp5proc_models(hwp_path, stream)
+        pending = False
+        for r in recs:
+            if r.get("type") == "Paragraph":
+                out.append(None)
+                pending = True
+            elif r.get("type") == "ParaCharShape" and pending:
+                out[-1] = [tuple(pair) for pair in r["content"]["charshapes"]]
+                pending = False
+    return out
+
+
+# Non-text LineSeg items (table/drawing objects and extended controls) that
+# occupy a fixed 8-WCHAR slot in the char-position stream. Kept for reference;
+# _item_width() falls back to 8 for any tag that isn't "Text"/"ControlChar",
+# so this set does not need to be exhaustive.
+_OBJECT_TAGS = {"TableControl", "GShapeObjectControl", "ColumnsDef",
+                "PageNumberPosition", "PageHide", "NewNumbering",
+                "BookmarkControl"}
+
+
+def _item_width(tag, text):
+    """WCHAR width of one LineSeg item, per HWP5's UTF-16-unit char counting."""
+    if tag == "Text":
+        return sum(2 if ord(c) > 0xFFFF else 1 for c in (text or ""))
+    if tag == "ControlChar":
+        return 1
+    return 8  # objects / extended controls
+
+
+def _para_items(para_el):
+    """(tag, text_or_None, xml_charshape_or_None) per LineSeg child, in order."""
+    items = []
+    for ls in para_el.findall("LineSeg/*"):
+        if ls.tag == "Text":
+            items.append(("Text", ls.text or "", ls.get("charshape-id")))
+        else:
+            items.append((ls.tag, None, ls.get("charshape-id")))
+    return items
+
+
+def _cs_at(arr, pos):
+    """Char-shape id in effect at `pos`, per the [(start, cs), ...] array."""
+    cur = arr[0][1]
+    for start, cs in arr:
+        if start <= pos:
+            cur = cs
+        else:
+            break
+    return cur
+
+
+def _resolve_item_char_shapes(items, arr):
+    """Resolve each item's char-shape from the position array. Returns
+    (shapes, mismatch_count). mismatch_count = items whose known xml charshape
+    disagrees with the array (expected 0 except category-A bullet paras)."""
+    shapes, mism, pos = [], 0, 0
+    for tag, text, xml_cs in items:
+        cs = _cs_at(arr, pos)
+        shapes.append(cs)
+        if xml_cs is not None and str(cs) != str(xml_cs):
+            mism += 1
+        pos += _item_width(tag, text)
+    return shapes, mism
 
 
 def _int(v, default=0):
