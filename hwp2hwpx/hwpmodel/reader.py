@@ -13,7 +13,7 @@ from .model import (
     HwpDocProperties, HwpCompatDocument, HwpPageHide,
     HwpBookmark, HwpNewNumbering, HwpBullet,
     HwpRect, HwpDrawText,
-    HwpNumbering, HwpNumberingLevel,
+    HwpNumbering, HwpNumberingLevel, HwpGradation,
 )
 
 _ALIGN_MAP = {
@@ -126,7 +126,20 @@ def _parse_border_fills(id_mappings):
             bg = fcp.get("background-color")
             if bg and bg.lower() != "none":
                 fill_color = bg
-        out.append(HwpBorderFill(index=i, borders=borders, fill_color=fill_color))
+        fg = bf_el.find("FillGradation")
+        gradation = None
+        if fg is not None:
+            ctr = fg.find("Coord32")
+            gradation = HwpGradation(
+                type=(fg.get("gradation-type") or "linear").lower(),
+                angle=_int(fg.get("shear")),
+                center_x=_int(ctr.get("x")) if ctr is not None else 0,
+                center_y=_int(ctr.get("y")) if ctr is not None else 0,
+                step=_int(fg.get("blur"), 50),
+                colors=[c.get("hex") or "#000000" for c in fg.findall("colors")],
+            )
+        out.append(HwpBorderFill(index=i, borders=borders, fill_color=fill_color,
+                                 gradation=gradation))
     return out
 
 

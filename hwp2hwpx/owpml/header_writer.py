@@ -95,7 +95,21 @@ def header_xml(header, sec_cnt=1):
             el.set("type", b.type if b else "NONE")
             el.set("width", b.width if b else "0.1 mm")
             el.set("color", b.color if b else "#000000")
-        if bf.fill_color:
+        if bf.gradation is not None:
+            g = bf.gradation
+            fb = etree.SubElement(be, _hc("fillBrush"))
+            ge = etree.SubElement(fb, _hc("gradation"))
+            ge.set("type", g.type)
+            ge.set("angle", str(g.angle))
+            ge.set("centerX", str(g.center_x))
+            ge.set("centerY", str(g.center_y))
+            ge.set("step", str(g.step))
+            ge.set("colorNum", str(len(g.colors)))
+            ge.set("stepCenter", str(g.step_center))
+            ge.set("alpha", str(g.alpha))
+            for color in g.colors:
+                etree.SubElement(ge, _hc("color")).set("value", color)
+        elif bf.fill_color:
             fb = etree.SubElement(be, _hc("fillBrush"))
             wb = etree.SubElement(fb, _hc("winBrush"))
             wb.set("faceColor", bf.fill_color)

@@ -341,10 +341,21 @@ class HwpBorder:
 
 
 @dataclass
+class HwpGradation:
+    type: str = "linear"
+    angle: int = 0
+    center_x: int = 0
+    center_y: int = 0
+    step: int = 50
+    colors: list = field(default_factory=list)
+
+
+@dataclass
 class HwpBorderFill:
     index: int
     borders: list = field(default_factory=list)
     fill_color: str = None
+    gradation: "HwpGradation" = None
 
 
 @dataclass

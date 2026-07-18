@@ -431,10 +431,23 @@ class Border:
 
 
 @dataclass
+class Gradation:
+    type: str = "LINEAR"
+    angle: int = 0
+    center_x: int = 0
+    center_y: int = 0
+    step: int = 50
+    step_center: int = 50
+    alpha: int = 0
+    colors: list = field(default_factory=list)
+
+
+@dataclass
 class BorderFill:
     id: int
     borders: list = field(default_factory=list)
     fill_color: str = None
+    gradation: "Gradation" = None
 
 
 @dataclass
