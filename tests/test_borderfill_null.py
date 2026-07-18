@@ -58,7 +58,12 @@ def _doc(first_bf):
     box_tbl = Table(border_fill_id=1, rows=[TableRow(cells=[Tc(border_fill_id=2)])])
     box_para = Para(id=2, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[box_tbl])])
     rect = Rect(draw_text=DrawText(sub_list=SubList(paras=[box_para])))
-    para = Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[tbl, rect])])
+    # a Container whose child text-box Rect has a nested table (ref=1)
+    con_tbl = Table(border_fill_id=1, rows=[TableRow(cells=[Tc(border_fill_id=2)])])
+    con_para = Para(id=3, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[con_tbl])])
+    con_rect = Rect(draw_text=DrawText(sub_list=SubList(paras=[con_para])))
+    container = Container(children=[con_rect])
+    para = Para(id=0, para_pr_id=0, runs=[Run(char_pr_id=0, texts=[tbl, rect, container])])
     sec = Section(paras=[para],
                   sec_pr=SecPr(page_border_fills=[PageBorderFill(border_fill_id=1)]))
     return OwpmlDocument(header=header, sections=[sec], metadata=Metadata(title="t"))
@@ -69,20 +74,24 @@ def _all_refs(doc):
     refs += [pp.border_fill_id for pp in doc.header.para_prs]
     for sec in doc.sections:
         refs += [p.border_fill_id for p in sec.sec_pr.page_border_fills]
+    def visit(item):
+        if isinstance(item, Table):
+            refs.append(item.border_fill_id)
+            for row in item.rows:
+                for c in row.cells:
+                    refs.append(c.border_fill_id)
+                    walk(c.paras)
+        elif isinstance(item, Rect) and item.draw_text and item.draw_text.sub_list:
+            walk(item.draw_text.sub_list.paras)
+        elif isinstance(item, Container):
+            for child in item.children:
+                visit(child)
+
     def walk(paras):
         for para in paras:
             for run in para.runs:
                 for item in run.texts:
-                    if isinstance(item, Table):
-                        refs.append(item.border_fill_id)
-                        for row in item.rows:
-                            for c in row.cells:
-                                refs.append(c.border_fill_id)
-                                walk(c.paras)
-                    elif isinstance(item, Rect) and item.draw_text and item.draw_text.sub_list:
-                        walk(item.draw_text.sub_list.paras)
-                    elif isinstance(item, Container):
-                        pass
+                    visit(item)
     for sec in doc.sections:
         walk(sec.paras)
     return refs
