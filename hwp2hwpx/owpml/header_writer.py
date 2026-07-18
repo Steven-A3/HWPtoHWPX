@@ -150,6 +150,8 @@ def header_xml(header, sec_cnt=1):
         sh.set("offsetX", str(cp.shadow_offset_x))
         sh.set("offsetY", str(cp.shadow_offset_y))
 
+        if cp.superscript:
+            etree.SubElement(ce, _hh("supscript"))
         if cp.subscript:
             etree.SubElement(ce, _hh("subscript"))
 

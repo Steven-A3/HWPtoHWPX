@@ -48,5 +48,6 @@ def map_char_shapes(shapes):
             shadow_offset_x=cs.shadow_offset_x,
             shadow_offset_y=cs.shadow_offset_y,
             subscript=cs.subscript,
+            superscript=cs.superscript,
         ))
     return out

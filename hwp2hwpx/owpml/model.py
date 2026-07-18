@@ -50,6 +50,7 @@ class CharPr:
     shadow_offset_x: int = 10
     shadow_offset_y: int = 10
     subscript: bool = False
+    superscript: bool = False
 
 
 @dataclass
