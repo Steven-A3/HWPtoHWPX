@@ -81,9 +81,13 @@ def _write_object(r, obj, state):
         _write_line(r, obj)
 
 
-def _write_run(p_el, run, state):
+def _write_run(p_el, run, state, lead_page_num=None):
     r = etree.SubElement(p_el, _hp("run"))
     r.set("charPrIDRef", str(run.char_pr_id))
+    if lead_page_num is not None:
+        # section page-number ctrl merged into this (first body) run, ahead of
+        # the run's own ctrls (matches Hancom's char-shape grouping).
+        _write_ctrl_pagenum(r, lead_page_num)
     for c in getattr(run, "ctrls", ()):
         _write_ctrl(r, c)
     # Walk the interleaved stream: text/inline-controls accumulate into a
@@ -231,6 +235,7 @@ def _write_paragraph(parent_el, para, state, sec_pr=None):
     p.set("pageBreak", "0")
     p.set("columnBreak", "0")
     p.set("merged", "0")
+    merge_page_num = False
     if sec_pr is not None:
         cref = para.runs[0].char_pr_id if para.runs else 0
         lead = etree.SubElement(p, _hp("run"))
@@ -238,10 +243,20 @@ def _write_paragraph(parent_el, para, state, sec_pr=None):
         _write_sec_pr(lead, sec_pr)
         if sec_pr.col_pr is not None:
             _write_ctrl_colpr(lead, sec_pr.col_pr)
-        if sec_pr.page_num is not None:
-            _write_ctrl_pagenum(lead, sec_pr.page_num)
-    for run in para.runs:
-        _write_run(p, run, state)
+        # The page-number ctrl sits at the section's first char position. Hancom
+        # groups it by char shape: it leads the first body run when that run
+        # shares the section's char shape, else it forms its own run after the
+        # secPr/colPr lead run.
+        merge_page_num = (sec_pr.page_num is not None and bool(para.runs)
+                          and sec_pr.first_char_shape is not None
+                          and sec_pr.first_char_shape == para.runs[0].char_pr_id)
+        if sec_pr.page_num is not None and not merge_page_num:
+            pn_run = etree.SubElement(p, _hp("run"))
+            pn_run.set("charPrIDRef", str(cref))
+            _write_ctrl_pagenum(pn_run, sec_pr.page_num)
+    for i, run in enumerate(para.runs):
+        lead_page_num = sec_pr.page_num if (merge_page_num and i == 0) else None
+        _write_run(p, run, state, lead_page_num=lead_page_num)
     if para.line_segs:
         lsa = etree.SubElement(p, _hp("linesegarray"))
         for ls in para.line_segs:

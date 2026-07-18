@@ -20,8 +20,7 @@ def _iter_all_paragraphs(paragraphs):
     for para in paragraphs:
         yield para
         for run in para.runs:
-            tbl = getattr(run, "table", None)
-            if tbl is not None:
+            for tbl in getattr(run, "tables", []):
                 for row in tbl.table_rows:
                     for cell in row.cells:
                         for p in _iter_all_paragraphs(cell.paragraphs):
@@ -57,7 +56,8 @@ def _collect_pic_bindata_ids(hwp_doc):
     for sec in hwp_doc.sections:
         for para in _iter_all_paragraphs(sec.paragraphs):
             for run in para.runs:
-                _collect_drawing_bindata_ids(getattr(run, "drawing", None), ids)
+                for d in getattr(run, "drawings", []):
+                    _collect_drawing_bindata_ids(d, ids)
     return ids
 
 

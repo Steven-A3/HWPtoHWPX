@@ -76,3 +76,30 @@ def test_resolver_consistency_across_samples():
             _, m = _resolve_item_char_shapes(items, arr or [(0, 0)])
             total += m
         assert total == exp, (pre, total)
+
+
+def test_full_document_correlation_map_and_mismatch():
+    # Task 3 correlates EVERY paragraph (top-level and nested cell/textbox) with
+    # its char-shape array via _build_char_shape_map. The map must cover all
+    # paragraphs, and the document-wide Text/ControlChar mismatch tally stays at
+    # the known invariant (0 on samples 3 & 4, 7 on 2013 -- the category-A
+    # bullet paragraphs), i.e. nested paragraphs add no new mismatches.
+    from hwp2hwpx.hwpmodel.reader import (
+        hwp5_xml, _para_items, _build_char_shape_map)
+    from lxml import etree
+
+    expected = {"3.": 0, "4.": 0, "2013": 7}
+    for pre, exp in expected.items():
+        hwp = glob.glob("samples/" + pre + "*.hwp")[0]
+        root = etree.fromstring(hwp5_xml(hwp))
+        cs_map = _build_char_shape_map(root, hwp5_char_shapes(hwp))
+        all_paras = root.findall(".//Paragraph")
+        assert len(cs_map) == len(all_paras)   # every paragraph correlated
+        total = 0
+        for p in all_paras:
+            arr = cs_map.get(p)
+            if not arr:
+                continue
+            _, m = _resolve_item_char_shapes(_para_items(p), arr)
+            total += m
+        assert total == exp, (pre, total)

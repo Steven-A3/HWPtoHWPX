@@ -36,12 +36,13 @@ def test_section_match_rises_sample4(tmp_path):
 
 
 def test_sample3_section_unchanged(tmp_path):
-    # Sample 3 has no markpen. Baseline refreshed for the inline-ctrls milestone
-    # (adds <hp:bookmark> after its text and <hp:newNum> before a table, +2
-    # <hp:ctrl> wrappers): len 497202, sha256 692ee507e50aa8fd.
+    # Sample 3 has no markpen. Baseline refreshed for Task 3's faithful run
+    # segmentation: para 0 now merges the pageNum ctrl into the table run
+    # (matching Hancom -> section0 has zero structural paragraph divergences),
+    # len 497233, sha256 4c059a6cc8be2bc2.
     out = tmp_path / "s3.hwpx"
     convert(S3, str(out))
     body = unzip_parts(str(out))["Contents/section0.xml"]
     import hashlib
-    assert len(body) == 497202
-    assert hashlib.sha256(body).hexdigest().startswith("692ee507e50aa8fd")
+    assert len(body) == 497233
+    assert hashlib.sha256(body).hexdigest().startswith("4c059a6cc8be2bc2")

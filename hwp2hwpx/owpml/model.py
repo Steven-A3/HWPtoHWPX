@@ -290,6 +290,7 @@ class SecPr:
     page_border_fills: list = field(default_factory=list)
     col_pr: "ColPr" = None
     page_num: "PageNum" = None
+    first_char_shape: int = None
 
 
 @dataclass

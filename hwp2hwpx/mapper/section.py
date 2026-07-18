@@ -113,4 +113,5 @@ def map_section_def(sd):
         page_border_fills=page_border_fills,
         col_pr=col_pr,
         page_num=page_num,
+        first_char_shape=sd.first_char_shape,
     )

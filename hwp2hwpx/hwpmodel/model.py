@@ -212,6 +212,9 @@ class HwpSectionDef:
     page_borders: list = field(default_factory=list)
     columns: "HwpColumnsDef" = None
     page_num: "HwpPageNum" = None
+    # char shape at the section's first char position (para 0, pos 0); Hancom's
+    # secPr/colPr/pageNum run carries it. None when unknown (no char-shape array).
+    first_char_shape: int = None
 
 
 @dataclass
@@ -293,8 +296,12 @@ class HwpRun:
         return next(iter(self.tables), None)
 
     @property
+    def drawings(self):
+        return [c for c in self.contents if isinstance(c, HwpDrawing)]
+
+    @property
     def drawing(self):
-        return next((c for c in self.contents if isinstance(c, HwpDrawing)), None)
+        return next(iter(self.drawings), None)
 
 
 @dataclass

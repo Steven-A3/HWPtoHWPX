@@ -29,16 +29,16 @@ def test_no_trailing_run_when_break_has_no_charshape():
     assert len(p.runs) == 1
 
 
-def test_no_trailing_run_for_table_terminated_paragraph():
-    # a paragraph whose only run is a table run has no contents-bearing run;
-    # last_cs is None, so no trailing empty run even if a break shape exists.
+def test_table_terminated_paragraph_splits_break_run_on_differing_shape():
+    # a table (char shape 7) then a paragraph break with a differing char shape
+    # (34): the object run holds the table, and the break's empty <hp:t/> anchor
+    # forms its own run at the break shape (Hancom's [tbl][<t/>] split).
     inner = ('<TableControl charshape-id="7"><TableBody rows="1" cols="1" '
              'borderfill-id="1"><TableRow><TableCell col="0" row="0" '
              'colspan="1" rowspan="1" width="100" height="100" borderfill-id="1">'
              '</TableCell></TableRow></TableBody></TableControl>'
              '<ControlChar name="PARAGRAPH_BREAK" charshape-id="34" code="13" kind="CHAR"/>')
     p = _para(inner)
-    # exactly the table run (table + empty <t/> anchor), no appended empty run
-    assert len(p.runs) == 1
-    assert p.runs[0].table is not None
-    assert p.runs[0].text == ""   # anchor span carries no visible text
+    assert len(p.runs) == 2
+    assert p.runs[0].char_shape_id == 7 and p.runs[0].table is not None
+    assert p.runs[1].char_shape_id == 34 and p.runs[1].contents == [""]

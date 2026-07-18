@@ -18,8 +18,9 @@ def _dfs_paragraphs(paragraphs):
     for para in paragraphs:
         yield para
         for run in para.runs:
-            table = getattr(run, "table", None)
-            if table is not None:
+            # a run may hold several tables (grouped by one char shape); walk
+            # them in contents order to match the binmodel's paragraph stream.
+            for table in getattr(run, "tables", []):
                 for row in table.table_rows:
                     for cell in row.cells:
                         yield from _dfs_paragraphs(cell.paragraphs)
