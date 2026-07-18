@@ -45,3 +45,21 @@ def test_header_sec_cnt_matches_section_count(tmp_path):
         assert "Contents/section1.xml" in z.namelist()
         root = etree.fromstring(z.read("Contents/header.xml"))
         assert root.get("secCnt") == "2"
+
+
+def test_prv_image_emitted_when_present(tmp_path):
+    out = tmp_path / "out.hwpx"
+    doc = _doc()
+    doc.prv_image = b"\x89PNG\r\n\x1a\npayload"
+    write_hwpx(doc, str(out))
+    with zipfile.ZipFile(out) as z:
+        assert "Preview/PrvImage.png" in z.namelist()
+        assert z.read("Preview/PrvImage.png") == b"\x89PNG\r\n\x1a\npayload"
+
+
+def test_prv_image_absent_when_none(tmp_path):
+    out = tmp_path / "out.hwpx"
+    doc = _doc()  # prv_image defaults to None
+    write_hwpx(doc, str(out))
+    with zipfile.ZipFile(out) as z:
+        assert "Preview/PrvImage.png" not in z.namelist()

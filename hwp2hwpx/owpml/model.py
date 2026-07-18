@@ -1,5 +1,6 @@
 """OWPML (HWPX) side data model — the Writer's input contract."""
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
@@ -431,6 +432,7 @@ class OwpmlDocument:
     sections: list
     metadata: Metadata
     bin_items: list = field(default_factory=list)
+    prv_image: Optional[bytes] = None
 
 
 @dataclass

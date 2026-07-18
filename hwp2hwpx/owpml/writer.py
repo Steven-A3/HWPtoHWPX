@@ -35,6 +35,8 @@ def write_hwpx(doc, out_path):
         "META-INF/manifest.xml": package_parts.manifest_xml(),
         "Preview/PrvText.txt": package_parts.prv_text(doc.sections),
     }
+    if doc.prv_image is not None:
+        parts["Preview/PrvImage.png"] = doc.prv_image
     for i, section in enumerate(doc.sections):
         parts["Contents/section%d.xml" % i] = section_xml(section)
     for item in getattr(doc, "bin_items", []):
