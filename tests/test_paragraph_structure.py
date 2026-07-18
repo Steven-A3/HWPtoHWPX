@@ -3,7 +3,7 @@ import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
-from tests.fidelity_struct import _para_sig, _top_paras, paragraph_divergences
+from tests.fidelity_struct import _para_sig, _top_paras, all_paragraph_divergences
 from lxml import etree
 
 # Task 3 tightened 2013 downward: table paragraphs now split into an object run
@@ -55,23 +55,31 @@ def test_score_floor_baseline():
         assert miss.get("t", 0) <= t_max, (pre, "t", miss.get("t"))
 
 
-# Full-document ratchet: every top-level paragraph's run/child-kind structure
-# must match Hancom's, except the known category-A bullet paragraphs in 2013
-# (hwp5proc's xml char-shape attribution splits an extra empty <t0> run there;
-# score-neutral, see reader.py's parse_paragraph docstring). Samples 3 and 4
-# are exact — empirically confirmed zero divergences, per Task 3's gates.
+# Full-document ratchet: every <hp:p> in document order — including ones
+# nested inside table cells and drawing text-boxes, not just the section
+# root's direct children — must match Hancom's run/child-kind structure,
+# except the known residuals in 2013. Indices here are document-order
+# positions over ALL paragraphs (all_paragraph_divergences), a different
+# scheme than the top-level-only indices used by the representative-paragraph
+# test above and by reader.py's parse_paragraph docstring bullet (a).
+# 259/267/357/436 are the category-A bullet paragraphs (hwp5proc's xml
+# char-shape attribution splits an extra empty <t0> run there; score-neutral).
+# 29 is a paragraph nested inside a drawing text-box (see reader.py's
+# parse_paragraph docstring bullet (b)). Samples 3 and 4 are exact —
+# empirically confirmed zero divergences over every paragraph, nested or not.
 EXPECTED_DIVERGENT_INDICES = {
     "3.": set(),
     "4.": set(),
-    "2013": {145, 153, 215, 279},
+    "2013": {29, 259, 267, 357, 436},
 }
 
 
 def test_full_document_structural_regression():
-    """Ratchet over every top-level paragraph in each sample (not just the
-    hand-picked representatives above): the set of divergent indices must
-    equal the known allowlist exactly — no new divergence, and no residual
-    silently changing shape (e.g. resolving then reappearing elsewhere)."""
+    """Ratchet over every paragraph in each sample, nested or not (not just
+    the hand-picked representatives above, and not just top-level ones): the
+    set of divergent indices must equal the known allowlist exactly — no new
+    divergence, and no residual silently changing shape (e.g. resolving then
+    reappearing elsewhere)."""
     for pre, expected in EXPECTED_DIVERGENT_INDICES.items():
         hwp = glob.glob("samples/" + pre + "*.hwp")[0]
         ref = glob.glob("samples/" + pre + "*.hwpx")[0]
@@ -79,5 +87,5 @@ def test_full_document_structural_regression():
         convert(hwp, out)
         ours = unzip_parts(out)["Contents/section0.xml"]
         theirs = unzip_parts(ref)["Contents/section0.xml"]
-        got = {d["index"] for d in paragraph_divergences(ours, theirs)}
+        got = {d["index"] for d in all_paragraph_divergences(ours, theirs)}
         assert got == expected, (pre, sorted(got))

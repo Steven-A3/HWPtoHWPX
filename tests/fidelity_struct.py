@@ -40,13 +40,17 @@ def _top_paras(root):
     return [e for e in root if ln(e) == 'p']  # direct <hp:p> children of the section root
 
 
-def paragraph_divergences(our_section_xml: bytes, their_section_xml: bytes) -> List[dict]:
-    """Compare top-level paragraphs by index; return the ones whose run/child-kind
-    structure differs (charPrIDRef value is score-invisible and ignored)."""
+def _all_paras(root):
+    # every <hp:p> in document order, including ones nested in table cells /
+    # drawing text-boxes (root.iter() is a document-order preorder walk)
+    return [e for e in root.iter() if ln(e) == 'p']
+
+
+def _paragraph_divergences(our_section_xml: bytes, their_section_xml: bytes, paras_fn) -> List[dict]:
     our_root = etree.fromstring(our_section_xml)
     their_root = etree.fromstring(their_section_xml)
-    our_paras = _top_paras(our_root)
-    their_paras = _top_paras(their_root)
+    our_paras = paras_fn(our_root)
+    their_paras = paras_fn(their_root)
 
     divergences = []
     for i in range(max(len(our_paras), len(their_paras))):
@@ -66,6 +70,19 @@ def paragraph_divergences(our_section_xml: bytes, their_section_xml: bytes) -> L
                 "theirs": their_sig,
             })
     return divergences
+
+
+def paragraph_divergences(our_section_xml: bytes, their_section_xml: bytes) -> List[dict]:
+    """Compare top-level paragraphs by index; return the ones whose run/child-kind
+    structure differs (charPrIDRef value is score-invisible and ignored)."""
+    return _paragraph_divergences(our_section_xml, their_section_xml, _top_paras)
+
+
+def all_paragraph_divergences(our_section_xml: bytes, their_section_xml: bytes) -> List[dict]:
+    """Like paragraph_divergences, but over every <hp:p> in document order —
+    including ones nested inside table cells and drawing text-boxes, not just
+    the section root's direct children."""
+    return _paragraph_divergences(our_section_xml, their_section_xml, _all_paras)
 
 
 def section_scores(hwp_path: str, ref_path: str) -> Optional[dict]:
