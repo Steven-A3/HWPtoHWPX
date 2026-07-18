@@ -36,7 +36,7 @@ def map_char_shapes(shapes):
             rel_sz=_translate(cs.rel_sz, 100),
             offset=_translate(cs.offset, 0),
             shade_color=_shade_color(cs.shade_color),
-            border_fill_id=1,
+            border_fill_id=cs.border_fill_id,
             underline_type=cs.underline_type,
             underline_shape=cs.underline_shape,
             underline_color=cs.underline_color,

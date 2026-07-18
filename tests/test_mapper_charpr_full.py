@@ -27,8 +27,10 @@ def test_shade_color_white_becomes_none():
     assert map_char_shapes([_src(shade_color="#FF0000")])[0].shade_color == "#FF0000"
 
 
-def test_border_fill_id_is_one():
-    assert map_char_shapes([_src()])[0].border_fill_id == 1
+def test_border_fill_id_passes_through_from_source():
+    src = _src()
+    src.border_fill_id = 7
+    assert map_char_shapes([src])[0].border_fill_id == 7
 
 
 def test_effects_passthrough():
