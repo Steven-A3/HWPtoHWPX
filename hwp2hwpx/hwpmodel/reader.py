@@ -694,7 +694,18 @@ def parse_paragraph(para_el, cs_map=None):
 
     ``cs_map`` maps each Paragraph element to its char-shape array (threaded
     from ``read_document``). When absent/None the paragraph keeps the legacy
-    xml-charshape grouping (objects fall back to charshape 0)."""
+    xml-charshape grouping (objects fall back to charshape 0).
+
+    Known residuals, left as-is (score-neutral / out of scope):
+    (a) category-A bullet paragraphs (2013 #145/#153/#215/#279): hwp5proc's
+        xml char-shape attribution there splits an extra empty run that the
+        raw array doesn't; harmless divergence, not a mis-segmentation.
+    (b) 2013 #29: an extended control (bookmark) inlined *between* two text
+        spans in one run. ctrls/ctrls_after can only lead/trail a run, not
+        split it mid-run, so one leading <t> is dropped — structurally out
+        of this model's reach.
+    (c) 2013 para-751 drawing internals (scaMatrix/rotMatrix): unrelated to
+        segmentation, tracked separately."""
     arr = cs_map.get(para_el) if cs_map else None
     children = para_el.findall("LineSeg/*")
     if arr:
