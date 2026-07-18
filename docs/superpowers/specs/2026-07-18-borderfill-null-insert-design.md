@@ -104,19 +104,34 @@ once the whole `OwpmlDocument` (header + all sections) is assembled.
 **Out (score-neutral, separate, untouched):**
 - `<hc:diagonal>` over-emission (we emit on all fills; Hancom omits on ~9).
 - The 8-fill `fillBrush` distribution difference on 2013 (equal total count).
+- **Header `borderFillIDRef` fidelity.** Two pre-existing, score-neutral
+  (attribute-value) divergences exist independently of this work: `charPr`
+  refs are hardcoded to `1` in the mapper (Hancom's vary — visible even on
+  sample 3, which scores 100%), and `paraPr` refs collapse the 0-vs-1 sentinel
+  (matches Hancom on sample 3, diverges on 2013). This pass applies the uniform
+  +1 to header refs too — that is required to **preserve reference semantics**
+  after the insert (a ref to source-fill-k must still resolve to that fill, now
+  at id k+1), not to make them match Hancom. Header refs remain divergent from
+  Hancom (shifted-but-still-off); fixing that is a separate future task. Only
+  **section0** refs become byte-faithful to Hancom.
 
 ## Testing & gates (all mandatory)
 
 - **Detection unit test:** the canonical-null structural test returns True for a
   canonical-null `BorderFill` and False for one with a fillBrush / a non-NONE side
   border.
-- **No-op regression (samples 3, 4, ★131008):** `borderFill` count unchanged, and
-  every `borderFillIDRef` in `header.xml` and `section0.xml` stays **byte-identical**
-  to Hancom's reference. This is the primary proof the pass never misfires and the
-  offset set is complete.
-- **Insert case (2013):** `borderFill` count 67→68; the id=1 null serializes
-  byte-exact to Hancom's; every `borderFillIDRef` in header.xml and section0.xml
-  equals the pre-pass value +1 and matches Hancom (379/379 in section0).
+- **No-op regression (samples 3, 4, ★131008):** the pass makes **no change** —
+  the entire produced `.hwpx` is byte-identical before vs after this change
+  (detection returns canonical, so nothing is inserted or offset). This is the
+  primary proof the pass never misfires.
+- **Insert case (2013) — self-consistency:** `borderFill` count 67→68; the id=1
+  null serializes byte-exact to Hancom's; **every** `borderFillIDRef` in header.xml
+  and section0.xml equals its pre-pass value +1 (proves the offset set is
+  exhaustive — no ref left unshifted).
+- **Insert case (2013) — Hancom fidelity:** every `borderFillIDRef` in
+  **section0.xml** matches Hancom exactly (379/379). Header refs are *not* gated
+  against Hancom (pre-existing `charPr`/`paraPr` divergence, see Scope) — only the
+  +1 self-consistency above.
 - **Score-floor:** no per-part fidelity score decreases on any sample; 2013 header
   rises (~99.67% → ~99.9%).
 - **Full suite green** (currently 437) via `.venv/bin/python -m pytest`.
