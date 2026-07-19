@@ -2,8 +2,9 @@ import zipfile
 from lxml import etree
 from hwp2hwpx.convert import convert
 from hwp2hwpx.constants import NS
+from tests.samplepaths import S3
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = S3
 
 
 def test_convert_produces_valid_hwpx(tmp_path):

@@ -3,7 +3,12 @@ import subprocess
 import sys
 import os
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+# Run from repo root as a plain script, so tests/ (a package) isn't on
+# sys.path by default; add it to reuse the shared sample resolver.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from tests.samplepaths import S3
+
+SAMPLE = S3
 OUT = "tests/fixtures/sample3.hwp5.xml"
 
 

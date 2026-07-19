@@ -1,4 +1,5 @@
 from hwp2hwpx.fidelity.xmlnorm import canonical, unzip_parts
+from tests.samplepaths import S3_REF
 
 
 def test_canonical_ignores_attr_order_and_ws():
@@ -14,6 +15,6 @@ def test_canonical_detects_real_difference():
 
 
 def test_unzip_parts_reads_sample(tmp_path):
-    parts = unzip_parts("samples/3.과업지시서_070.hwpx")
+    parts = unzip_parts(S3_REF)
     assert "Contents/section0.xml" in parts
     assert parts["mimetype"] == b"application/hwp+zip"

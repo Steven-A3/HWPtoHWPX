@@ -1,7 +1,8 @@
 import zipfile
 from hwp2hwpx.convert import convert
+from tests.samplepaths import S3
 
-SAMPLE_HWP = "samples/3.과업지시서_070.hwp"
+SAMPLE_HWP = S3
 
 
 def _section(tmp_path):

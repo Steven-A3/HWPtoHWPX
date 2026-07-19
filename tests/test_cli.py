@@ -1,26 +1,21 @@
-import glob
 import json
 import os
 
 import pytest
 
 from hwp2hwpx.cli import main
-
-
-def _sample():
-    # samples/ is private and git-ignored; locate by prefix, never by filename.
-    return glob.glob("samples/3.*.hwp")[0]
+from tests.samplepaths import S3
 
 
 def test_converts_a_single_file_with_explicit_output(tmp_path):
     out = tmp_path / "out.hwpx"
-    assert main([_sample(), "-o", str(out)]) == 0
+    assert main([S3, "-o", str(out)]) == 0
     assert os.path.getsize(str(out)) > 0
 
 
 def test_converts_into_an_outdir_that_does_not_exist_yet(tmp_path):
     outdir = tmp_path / "made-on-demand"
-    assert main([_sample(), "--outdir", str(outdir)]) == 0
+    assert main([S3, "--outdir", str(outdir)]) == 0
     assert len(os.listdir(str(outdir))) == 1
 
 
@@ -41,7 +36,7 @@ def test_quiet_suppresses_the_failure_message_but_not_the_exit_code(tmp_path, ca
 
 
 def test_success_is_silent(tmp_path, capsys):
-    main([_sample(), "-o", str(tmp_path / "out.hwpx")])
+    main([S3, "-o", str(tmp_path / "out.hwpx")])
     captured = capsys.readouterr()
     assert captured.out == "" and captured.err == ""
 
@@ -49,27 +44,27 @@ def test_success_is_silent(tmp_path, capsys):
 def test_skipping_an_existing_output_exits_zero(tmp_path):
     out = tmp_path / "out.hwpx"
     out.write_bytes(b"already here")
-    assert main([_sample(), "-o", str(out)]) == 0
+    assert main([S3, "-o", str(out)]) == 0
     assert out.read_bytes() == b"already here"
 
 
 def test_force_overwrites_an_existing_output(tmp_path):
     out = tmp_path / "out.hwpx"
     out.write_bytes(b"already here")
-    assert main([_sample(), "-o", str(out), "--force"]) == 0
+    assert main([S3, "-o", str(out), "--force"]) == 0
     assert out.read_bytes() != b"already here"
 
 
 def test_force_without_an_explicit_destination_is_a_usage_error(tmp_path):
     # The V1 gate.
     with pytest.raises(SystemExit) as exc:
-        main([_sample(), "--force"])
+        main([S3, "--force"])
     assert exc.value.code == 2
 
 
 def test_o_with_several_inputs_is_a_usage_error():
     with pytest.raises(SystemExit) as exc:
-        main([_sample(), _sample(), "-o", "out.hwpx"])
+        main([S3, S3, "-o", "out.hwpx"])
     assert exc.value.code == 2
 
 
@@ -87,7 +82,7 @@ def test_json_flag_does_not_swallow_a_positional_input(tmp_path):
 
 def test_json_report_records_counts_and_per_file_status(tmp_path):
     report = tmp_path / "report.json"
-    rc = main([_sample(), "does-not-exist.hwp", "--outdir", str(tmp_path),
+    rc = main([S3, "does-not-exist.hwp", "--outdir", str(tmp_path),
                "--json", str(report)])
     assert rc == 1
     data = json.loads(report.read_text(encoding="utf-8"))
@@ -97,12 +92,12 @@ def test_json_report_records_counts_and_per_file_status(tmp_path):
 
 
 def test_json_to_stdout(tmp_path, capsys):
-    main([_sample(), "--outdir", str(tmp_path), "--json", "-"])
+    main([S3, "--outdir", str(tmp_path), "--json", "-"])
     assert json.loads(capsys.readouterr().out)["counts"]["converted"] == 1
 
 
 def test_verbose_reports_each_file_and_a_summary(tmp_path, capsys):
-    main(["-v", _sample(), "--outdir", str(tmp_path)])
+    main(["-v", S3, "--outdir", str(tmp_path)])
     err = capsys.readouterr().err
     assert "converted 1" in err
 
@@ -120,19 +115,19 @@ def test_bare_json_flag_is_a_usage_error(tmp_path):
     # given a positional next, swallow that document instead. Supplying an
     # explicit path does not discriminate between the two -- only a bare flag does.
     with pytest.raises(SystemExit) as exc:
-        main([_sample(), "--json"])
+        main([S3, "--json"])
     assert exc.value.code == 2
 
 
 def test_bare_json_flag_before_another_option_is_a_usage_error(tmp_path):
     with pytest.raises(SystemExit) as exc:
-        main(["--json", "--outdir", str(tmp_path), _sample()])
+        main(["--json", "--outdir", str(tmp_path), S3])
     assert exc.value.code == 2
 
 
 def test_o_together_with_outdir_is_a_usage_error(tmp_path):
     with pytest.raises(SystemExit) as exc:
-        main([_sample(), "-o", str(tmp_path / "o.hwpx"), "--outdir", str(tmp_path)])
+        main([S3, "-o", str(tmp_path / "o.hwpx"), "--outdir", str(tmp_path)])
     assert exc.value.code == 2
 
 

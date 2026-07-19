@@ -1,8 +1,9 @@
 import zipfile
 from hwp2hwpx.convert import convert
+from tests.samplepaths import S3, S4
 
-SAMPLE1 = "samples/3.과업지시서_070.hwp"
-SAMPLE2 = "samples/4.제안요청서_070.hwp"
+SAMPLE1 = S3
+SAMPLE2 = S4
 
 
 def _parts(tmp_path, src):
