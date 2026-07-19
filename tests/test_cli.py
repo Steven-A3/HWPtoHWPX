@@ -112,3 +112,37 @@ def test_version_prints_and_exits_zero(capsys):
         main(["--version"])
     assert exc.value.code == 0
     assert capsys.readouterr().out.strip() != ""
+
+
+def test_bare_json_flag_is_a_usage_error(tmp_path):
+    # The real V3 gate. With a mandatory value, a --json carrying no argument is
+    # rejected; with nargs="?" argparse would quietly default it to stdout and,
+    # given a positional next, swallow that document instead. Supplying an
+    # explicit path does not discriminate between the two -- only a bare flag does.
+    with pytest.raises(SystemExit) as exc:
+        main([_sample(), "--json"])
+    assert exc.value.code == 2
+
+
+def test_bare_json_flag_before_another_option_is_a_usage_error(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        main(["--json", "--outdir", str(tmp_path), _sample()])
+    assert exc.value.code == 2
+
+
+def test_o_together_with_outdir_is_a_usage_error(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        main([_sample(), "-o", str(tmp_path / "o.hwpx"), "--outdir", str(tmp_path)])
+    assert exc.value.code == 2
+
+
+def test_version_falls_back_when_the_package_is_not_installed(monkeypatch):
+    import importlib.metadata
+
+    from hwp2hwpx import cli
+
+    def not_installed(name):
+        raise importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(importlib.metadata, "version", not_installed)
+    assert cli._installed_version() == "unknown"
