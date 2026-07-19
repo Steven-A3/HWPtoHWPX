@@ -33,17 +33,22 @@ def extract_markpens(source):
     the total count of binmodel `Paragraph` records seen in that section (used
     by attach_range_tags for a per-section count-equality guard). kind==2 only.
     Returns [] on any read failure (fail-safe)."""
+    src = _as_source(source)
     try:
-        f = _as_source(source).hwp5file
+        names = src.section_names()
     except Exception:
         return []
     out = []
     try:
-        for sec_name in f.bodytext:
-            stream = f.bodytext[sec_name]
+        for sec_name in names:
+            # Goes through HwpSource.section_models rather than re-walking
+            # `f.bodytext[sec_name].models()` directly: the latter builds a
+            # fresh, uncached Section object per call, so this path used to
+            # re-parse every section's binary record stream a second time
+            # (reader.py's hwp5_char_shapes already parses it once).
             buckets = {}
             para_idx = -1
-            for model in stream.models():
+            for model in src.section_models(sec_name):
                 name = model["type"].__name__
                 if name == "Paragraph":
                     para_idx += 1

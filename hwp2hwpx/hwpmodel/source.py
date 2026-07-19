@@ -10,7 +10,12 @@ from hwp5.xmlmodel import Hwp5File
 
 
 def _strip(v):
-    return (v or "").strip()
+    # OLE property values are normally str, but a vendor-authored file can put
+    # a non-string type (e.g. an int) in a text-typed slot like keywords;
+    # .strip() on that raises AttributeError outside the _field guard.
+    if isinstance(v, str):
+        return v.strip()
+    return str(v).strip() if v else ""
 
 
 def _field(si, name):
@@ -18,6 +23,8 @@ def _field(si, name):
     # absent property raises KeyError (or TypeError when the whole set is
     # missing) from inside the getter -- getattr's default only covers
     # AttributeError. Degrade to absent, like the text-dump path did.
+    if si is None:
+        return None
     try:
         return getattr(si, name)
     except (AttributeError, KeyError, TypeError):
@@ -37,6 +44,7 @@ class HwpSource:
         self._file = None
         self._xml = None
         self._docinfo_models = None
+        self._section_names = None
         self._section_models = {}
         self._streams = {}
         self._summary = None
@@ -46,6 +54,25 @@ class HwpSource:
         if self._file is None:
             self._file = Hwp5File(self._path)
         return self._file
+
+    def close(self):
+        """Release the OLE storage handle, if one was opened.
+
+        Idempotent, and safe to call when the file was never opened.
+        `Hwp5File` holds a reference cycle through its wrapper chain (each
+        wrapper holds `self.wrapped`), so plain refcounting does not reclaim
+        the underlying file descriptor when a caller simply drops the
+        `HwpSource` -- callers that open many files in one process (e.g. CLI
+        batch mode) must close explicitly or descriptors accumulate."""
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
 
     def xml(self):
         if self._xml is None:
@@ -60,7 +87,25 @@ class HwpSource:
         return self._docinfo_models
 
     def section_names(self):
-        return list(self.hwp5file.bodytext)
+        if self._section_names is None:
+            # `self.hwp5file.bodytext` is raw OLE directory order, unfiltered
+            # (BodyText can hold non-Section children) -- match the XML dump's
+            # order instead (hwp5.xmlmodel.Sections.events() walks
+            # Sections.section_indexes(), the same filter+numeric-sort), so a
+            # section index derived from parsed XML lines up with the section
+            # this returns at the same position.
+            names = []
+            for name in self.hwp5file.bodytext:
+                if not name.startswith("Section"):
+                    continue
+                try:
+                    idx = int(name[len("Section"):])
+                except ValueError:
+                    continue
+                names.append((idx, name))
+            names.sort(key=lambda pair: pair[0])
+            self._section_names = [name for _, name in names]
+        return self._section_names
 
     def section_models(self, name):
         if name not in self._section_models:
@@ -83,7 +128,13 @@ class HwpSource:
 
     def summary(self):
         if self._summary is None:
-            si = self.hwp5file.summaryinfo
+            # A document with no \x05HwpSummaryInformation stream at all
+            # raises out of the `summaryinfo` cached_property itself, before
+            # any `_field` guard runs -- degrade to absent like _field does.
+            try:
+                si = self.hwp5file.summaryinfo
+            except Exception:
+                si = None
             created = _field(si, "createdTime")
             saved = _field(si, "lastSavedTime")
             self._summary = {
