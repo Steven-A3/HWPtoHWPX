@@ -703,8 +703,19 @@ Expected: 15 passed.
 
 - [ ] **Step 5: Verify no sample filename leaked into committed files**
 
-Run: `rg -n "과업지시서|제안요청서|WBS|ETRI|혁신전략" tests/ hwp2hwpx/ docs/ ; echo "exit=$?"`
-Expected: no matches, `exit=1`.
+Sample filenames must never appear in committed files, so check for the shape of
+the mistake rather than for the names themselves: any `samples/...` path that is
+a literal filename instead of a prefix glob.
+
+Run: `rg -n 'samples/[^"'"'"'*]*\.hwp' tests/test_cli.py hwp2hwpx/ ; echo "exit=$?"`
+
+Expected: `exit=1` (no matches). Every legitimate reference looks like
+`glob.glob("samples/3.*.hwp")[0]` and contains a `*`, so it will not match.
+
+The check is deliberately scoped to the files this plan touches. Roughly twenty
+*other* test modules hardcode sample filenames the same way — a pre-existing,
+repo-wide breach that predates this work and is tracked separately. Do not widen
+this gate to `tests/`; it will fail on files you did not touch.
 
 - [ ] **Step 6: Run the full suite**
 
