@@ -81,13 +81,50 @@ dependencies, and puts both the `hwp2hwpx` and `hwp5proc` executables on
 
 ## Usage
 
-### Command line
-
-```bash
-hwp2hwpx input.hwp -o output.hwpx
+```
+hwp2hwpx [-o FILE | --outdir DIR] [--force] [--json FILE]
+         [-q | -v] [--version] INPUT [INPUT ...]
 ```
 
-(`hwp2hwpx/cli.py` — `-o`/`--output` is required; the input path must exist.)
+Convert one document, naming the output:
+
+```
+hwp2hwpx report.hwp -o report.hwpx
+```
+
+Convert many, writing them beside their inputs (existing outputs are skipped):
+
+```
+hwp2hwpx docs/*.hwp
+```
+
+Convert many into one directory, overwriting what is already there:
+
+```
+hwp2hwpx docs/*.hwp --outdir out/ --force
+```
+
+Options:
+
+- `-o FILE` — output path; valid with exactly one input.
+- `--outdir DIR` — directory to write outputs into; created if absent.
+- With neither, each output lands beside its input as `<name>.hwpx`.
+- `--force` — overwrite existing outputs. Requires `-o` or `--outdir`, so that
+  overwriting a directory of documents in place has to be asked for by name.
+- `--json FILE` — write a machine-readable report (`-` for stdout) with per-file
+  status and counts.
+- `-q` — suppress per-failure messages; `-v` — report every file and a summary.
+
+Existing outputs are skipped rather than overwritten, so a large batch can be
+re-run cheaply. Failures do not stop the run: every input is attempted.
+
+Exit codes:
+
+| code | meaning |
+|------|---------|
+| 0 | no failures (skipped files are not failures) |
+| 1 | one or more files failed to convert |
+| 2 | usage error |
 
 ### As a library
 
