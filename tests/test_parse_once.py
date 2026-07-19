@@ -10,12 +10,14 @@ from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
 SAMPLES = ["samples/3.", "samples/4.", "samples/★131008", "samples/20131106"]
 
-# Goldens are *.golden.hwpx beside each sample, captured from the converter as of
-# f114e7b (the commit before the parse-once refactor). They are derived artifacts
-# living under the git-ignored samples/, so a fresh checkout has none and this
-# gate skips rather than failing on a missing input. To recreate them, run
-# convert() from a worktree at f114e7b over each sample, writing
-# <sample-basename>.golden.hwpx.
+# Goldens live in samples/goldens/<sample-basename>.hwpx, captured from the
+# converter as of f114e7b (the commit before the parse-once refactor). They must
+# stay out of samples/ itself: the fidelity tests locate Hancom's reference via
+# globs like samples/3.*.hwpx, and a golden sitting there can win the glob and
+# make those tests compare our output against itself. They are derived artifacts
+# under the git-ignored samples/, so a fresh checkout has none and this gate
+# skips rather than failing on a missing input. To recreate them, run convert()
+# from a worktree at f114e7b over each sample into samples/goldens/.
 
 
 @pytest.mark.parametrize("pre", SAMPLES)
@@ -33,7 +35,8 @@ def test_convert_spawns_no_subprocess(pre, monkeypatch):
 @pytest.mark.parametrize("pre", SAMPLES)
 def test_output_matches_golden(pre):
     hwp = glob.glob(pre + "*.hwp")[0]
-    golden = glob.glob(pre + "*.golden.hwpx")
+    golden = glob.glob(os.path.join(
+        "samples/goldens", os.path.basename(os.path.splitext(hwp)[0]) + ".hwpx"))
     if not golden:
         pytest.skip("no pre-refactor golden captured for this sample")
     with tempfile.TemporaryDirectory() as td:
