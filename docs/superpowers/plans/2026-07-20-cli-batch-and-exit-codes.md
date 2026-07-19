@@ -95,19 +95,23 @@ def test_successful_write_leaves_only_the_output(tmp_path):
     assert os.listdir(str(tmp_path)) == ["out.hwpx"]
 
 
-def test_output_is_world_readable_not_private(tmp_path):
+def test_output_has_the_mode_a_normal_create_would_give_it(tmp_path):
     # tempfile.mkstemp creates 0600; os.replace would carry that onto the
-    # output, silently making every converted document owner-only.
+    # output, silently making every converted document owner-only. Compare
+    # against a file created normally in the same directory rather than a
+    # hardcoded bit, so the test holds under any umask.
+    reference = tmp_path / "reference"
+    reference.write_bytes(b"")
     out = tmp_path / "out.hwpx"
     write_package(GOOD_PARTS, str(out))
-    assert os.stat(str(out)).st_mode & 0o044
+    assert os.stat(str(out)).st_mode == os.stat(str(reference)).st_mode
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `.venv/bin/python -m pytest tests/test_writer_atomic.py -v`
 
-Expected: `test_failed_write_leaves_previous_content_intact` FAILS (the file was truncated to an empty/partial zip), `test_failed_write_creates_no_output` FAILS (a truncated file exists). The three remaining tests may already pass — that is fine and expected.
+Expected: `test_failed_write_leaves_previous_content_intact` FAILS (the file was truncated to an empty/partial zip), `test_failed_write_creates_no_output` FAILS (a truncated file exists). The three remaining tests may already pass — that is fine and expected, since today's direct write already produces a normally-created file and strands no temp.
 
 - [ ] **Step 3: Make `write_package` atomic**
 
