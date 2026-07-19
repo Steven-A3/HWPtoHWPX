@@ -13,6 +13,17 @@ def _strip(v):
     return (v or "").strip()
 
 
+def _field(si, name):
+    # HwpSummaryInfo exposes these as properties over an OLE property set, so an
+    # absent property raises KeyError (or TypeError when the whole set is
+    # missing) from inside the getter -- getattr's default only covers
+    # AttributeError. Degrade to absent, like the text-dump path did.
+    try:
+        return getattr(si, name)
+    except (AttributeError, KeyError, TypeError):
+        return None
+
+
 def _fmt_ts(dt):
     # match read_summary_info: "YYYY-MM-DDThh:mm:ssZ", empty when absent
     if dt is None:
@@ -73,18 +84,18 @@ class HwpSource:
     def summary(self):
         if self._summary is None:
             si = self.hwp5file.summaryinfo
-            created = getattr(si, "createdTime", None)
-            saved = getattr(si, "lastSavedTime", None)
+            created = _field(si, "createdTime")
+            saved = _field(si, "lastSavedTime")
             self._summary = {
-                "title": _strip(getattr(si, "title", "")),
-                "creator": _strip(getattr(si, "author", "")),
-                "subject": _strip(getattr(si, "subject", "")),
-                "description": _strip(getattr(si, "comments", "")),
-                "last_saved_by": _strip(getattr(si, "lastSavedBy", "")),
+                "title": _strip(_field(si, "title")),
+                "creator": _strip(_field(si, "author")),
+                "subject": _strip(_field(si, "subject")),
+                "description": _strip(_field(si, "comments")),
+                "last_saved_by": _strip(_field(si, "lastSavedBy")),
                 "created_date": _fmt_ts(created.datetime if created is not None else None),
                 "modified_date": _fmt_ts(saved.datetime if saved is not None else None),
-                "date": _strip(getattr(si, "dateString", "")),
-                "keyword": _strip(getattr(si, "keywords", "")),
+                "date": _strip(_field(si, "dateString")),
+                "keyword": _strip(_field(si, "keywords")),
             }
         return self._summary
 

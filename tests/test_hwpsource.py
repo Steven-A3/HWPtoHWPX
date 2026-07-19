@@ -81,3 +81,27 @@ def test_as_source_passthrough():
     src = HwpSource(_hwp("samples/3."))
     assert _as_source(src) is src
     assert isinstance(_as_source(_hwp("samples/3.")), HwpSource)
+
+
+def test_summary_tolerates_absent_ole_properties():
+    # HwpSummaryInfo exposes its fields as properties over an OLE property set:
+    # an absent property raises KeyError from inside the getter, and a missing
+    # property set raises TypeError. Neither is caught by getattr's default.
+    class _Boom:
+        @property
+        def title(self):
+            raise KeyError("PIDSI_TITLE")
+
+        @property
+        def createdTime(self):
+            raise TypeError("propertySet is None")
+
+    class _Fake:
+        summaryinfo = _Boom()
+
+    src = HwpSource("unused")
+    src._file = _Fake()
+    summary = src.summary()
+    assert summary["title"] == ""
+    assert summary["created_date"] == ""
+    assert summary["keyword"] == ""
