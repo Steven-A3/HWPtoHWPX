@@ -1,13 +1,14 @@
 """Read HWP paragraph range-tag records (markpen highlighter) via pyhwp's
 binmodel API and attach them to parsed paragraphs.
 
-`hwp5proc xml` (the reader's main source) omits range tags entirely, so this is
+The XML dump (the reader's main source) omits range tags entirely, so this is
 the one reader path that reads the binary model directly. Only kind==2 tags
 (the markpen highlighter) are kept; `data` is the RGB color. Range tags are
 keyed by depth-first paragraph index, which matches the order the binmodel emits
 `Paragraph` records (level 0 section paragraphs, level>=2 table-cell paragraphs)
 and the order `read_document`/`parse_paragraph` build the parsed tree."""
 from .model import HwpRangeTag
+from .source import _as_source
 
 _MARKPEN_KIND = 2
 
@@ -26,15 +27,14 @@ def _dfs_paragraphs(paragraphs):
                         yield from _dfs_paragraphs(cell.paragraphs)
 
 
-def extract_markpens(hwp_path):
+def extract_markpens(source):
     """One (buckets, binmodel_para_count) pair per bodytext section, where
     buckets is {dfs_para_index: [HwpRangeTag, ...]} and binmodel_para_count is
     the total count of binmodel `Paragraph` records seen in that section (used
     by attach_range_tags for a per-section count-equality guard). kind==2 only.
     Returns [] on any read failure (fail-safe)."""
     try:
-        from hwp5.xmlmodel import Hwp5File
-        f = Hwp5File(hwp_path)
+        f = _as_source(source).hwp5file
     except Exception:
         return []
     out = []
@@ -63,14 +63,14 @@ def extract_markpens(hwp_path):
     return out
 
 
-def attach_range_tags(hwp_path, hwp_doc):
+def attach_range_tags(source, hwp_doc):
     """Attach kind==2 range tags to hwp_doc paragraphs by DFS index. Fail-safe:
     on any error, or a per-section paragraph-count mismatch between the
     binmodel `Paragraph` record count and the parsed-tree DFS paragraph count,
     that section's paragraphs keep empty `markpens` rather than risk
     mis-assignment (e.g. from binmodel-only nested paragraphs emitted by
     header/footer/footnote/endnote/textbox controls)."""
-    sections_buckets = extract_markpens(hwp_path)
+    sections_buckets = extract_markpens(source)
     if not sections_buckets:
         return
     for sec, (buckets, bin_para_count) in zip(hwp_doc.sections, sections_buckets):
