@@ -58,7 +58,11 @@ def _reject_output_collisions(jobs):
     be caught here -- before any conversion runs -- rather than in run_jobs."""
     inputs_by_output = {}
     for job in jobs:
-        inputs_by_output.setdefault(job.output, []).append(job.input)
+        # Group on the normalized path so that "d/a.hwp" and "d/./a.hwp" -- the
+        # same destination spelled two ways -- still collide. normpath is pure
+        # string work; resolving symlinks would need the filesystem.
+        key = os.path.normpath(job.output)
+        inputs_by_output.setdefault(key, []).append(job.input)
     for output, inputs in inputs_by_output.items():
         if len(inputs) > 1:
             raise UsageError(

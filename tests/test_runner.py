@@ -145,3 +145,10 @@ def test_run_treats_a_missing_input_as_a_per_file_failure():
     # Not a usage error: one typo in a 500-path list must not abort the run.
     results = run_jobs([Job("does-not-exist.hwp", "x.hwpx", "convert")])
     assert results[0].ok is False
+
+
+def test_plan_detects_a_collision_spelled_two_different_ways():
+    # Same destination, different lexical spelling of the input path: grouping
+    # on the raw string would miss it and the second job would clobber the first.
+    with pytest.raises(UsageError):
+        plan_jobs(["/docs/a.hwp", "/docs/./a.hwp"])
