@@ -1,121 +1,143 @@
-# Parse-Once Performance — Design
+# Parse-Once Performance — Design (v2, skeptic-hardened)
 
 **Goal:** Eliminate per-conversion subprocess overhead. Open the HWP file **once**
 via pyhwp's in-process Python API and serve XML, models, streams, and summary
-from that single object, instead of spawning 6–10 `hwp5proc` processes (plus a
-redundant in-process re-open) that each re-parse the whole OLE file.
+from a single **memoizing** `HwpSource`, instead of spawning 6–10 `hwp5proc`
+processes (plus a redundant in-process re-open) that each re-parse the whole file.
 
-**Status:** design derived and feasibility-verified against all four sample
-documents — including a byte-identical-output proof for the XML path.
+**Status:** design derived and adversarially verified. Three vulnerabilities were
+identified and empirically tested (below); the design is revised to address each.
 
 ---
 
 ## Problem
 
-Every `convert()` currently spawns 6–10 `hwp5proc` subprocesses, each of which
-starts a fresh Python interpreter, imports pyhwp, and re-parses the entire OLE
-file. Measured: sample 3 = 1.17 s / 6 spawns, sample 4 = 1.65 s / 10 spawns. In
-addition, `rangetags.py` already opens its **own** in-process
-`hwp5.xmlmodel.Hwp5File` — a 7th independent parse of the same bytes.
+Every `convert()` spawns 6–10 `hwp5proc` subprocesses, each starting a fresh
+interpreter, importing pyhwp, and re-parsing the entire OLE file. Measured:
+sample 3 = 1.17 s / 6 spawns, sample 4 = 1.68 s / 10 spawns. `rangetags.py` also
+opens its **own** in-process `Hwp5File` — a 7th redundant parse.
 
-Subprocess call sites (verified full sweep):
-- `hwp2hwpx/hwpmodel/reader.py`: `models <stream>` (per section + DocInfo), `ls`.
-- `hwp2hwpx/hwpmodel/bindata.py`: `ls`, `cat <BinData stream>` (per image), `cat PrvImage`.
-- `hwp2hwpx/hwpmodel/summary.py`: `summaryinfo`.
-- `hwp2hwpx/hwpmodel/rangetags.py`: opens its own `Hwp5File` (in-process, but redundant).
+Subprocess sites (verified full sweep): `reader.py` (`models` per section +
+DocInfo, `ls`); `bindata.py` (`ls`, `cat` per image, `cat PrvImage`);
+`summary.py` (`summaryinfo`); `rangetags.py` (own `Hwp5File`).
 
 ## Approach (decided: pure API, no subprocess fallback)
 
-Introduce a single **`HwpSource`** opened once per `convert`, holding one
-`hwp5.xmlmodel.Hwp5File`, and refactor every reader/bindata/summary/rangetags
-access to consume it. Remove all `hwp5proc` subprocess calls. Dropping the
-subprocess path also removes the `hwp5proc` binary as a runtime requirement
-(a packaging simplification).
+One **memoizing `HwpSource`** opened once per `convert`, holding one
+`hwp5.xmlmodel.Hwp5File`, consumed by reader/bindata/summary/rangetags. All
+`hwp5proc` subprocess calls removed; the `hwp5proc` binary is no longer a runtime
+requirement.
 
-### Feasibility (verified)
+## Adversarial verification (the three riskiest assumptions, tested)
 
-- **XML — byte-identical output.** `Hwp5File.xmlevents().dump(buf)` produces XML
-  that is *not* byte-identical to `hwp5proc xml` (formatting differs), but
-  converting from it yields **byte-identical `.hwpx` output on all four samples**
-  (the reader parses structurally). Proven this session.
-- **Models — `payload` available as `bytes`.** `Hwp5File.docinfo.models()` and
-  `.bodytext.section(n).models()` yield model dicts with keys `type`, `content`,
-  `payload` (raw `bytes`, not the hex-string list the JSON CLI emits). The
-  offset-68 charPr read and the `charshapes` position arrays both work directly
-  (the API is actually simpler — no hex decode).
-- **Streams — byte-identical `cat`.** `hwp5file[part][...].open().read()` returns
-  bytes byte-identical to `hwp5proc cat` for `PrvImage` (16,632 B) and a BinData
-  image (1,005,994 B), decompression included.
-- **Summary — structured object.** `hwp5file.summaryinfo` is a `HwpSummaryInfo`
-  with `author/comments/keywords/lastSavedBy/created&lastSaved times`. `title`
-  and `subject` are **not** direct attributes; they live in `summaryinfo.propertySet`
-  by OLE property id (PIDSI_TITLE=2, PIDSI_SUBJECT=3). This is the one accessor
-  needing a field-mapping (or reuse of pyhwp's text dump); gated by an
-  equivalence test.
+### V1 — "the in-process XML difference is harmless" — TESTED, HELD
+The in-process `xmlevents().dump()` XML is 24 KB larger than `hwp5proc xml`. Root
+cause identified: the delta is confined to (a) the `PropertySetStream` element
+(summary info — which the reader does **not** consume from XML; it reads summary
+separately) and (b) **attribute ordering** (same attributes, same values,
+different order — irrelevant to the `.get()`-based reader). Proven on all four
+samples by an order-independent tree walk: outside `PropertySetStream`, the two
+XMLs are **element-for-element identical** (same tags, same attribute-value sets,
+same text; 5848/7001/4909/7880 elements, zero mismatches). Because the two
+differences are systematic code-path behaviors (not data-dependent), this
+generalizes. **Gate:** assert this tree-equivalence, not merely byte-identical
+output.
+
+### V2 — "cat via API == cat via CLI" — TESTED, HELD (with a helper caveat)
+`hwp5proc cat` *is* `hwp5file[name].open().read()` internally, so they cannot
+diverge on compression by construction. Verified on **every** stream in all four
+docs (BinData spanning bmp/jpg/png): all byte-identical. **Caveat found:** a naive
+`path.split('/')` storage walk raises `KeyError` on the control-char stream name
+`\x05HwpSummaryInformation`. That stream is never `cat`-ed (summary comes from the
+API object), and the paths we do use — `BinData/*`, `PrvImage` — all resolve
+correctly. **Design constraint:** the stream accessor handles only the concrete
+paths we need and returns `None` for a missing/inaccessible stream (callers
+already skip missing streams); it does not attempt to be a general storage walker.
+
+### V3 — "parse once → ~3×" — TESTED, CORRECTED
+False as stated: pyhwp accessors are lazy and **do not cache** — `xml()` costs
+0.231 s on first call and 0.227 s again on the *same object*. Opening once ≠
+parsing once. Corrected conclusions, now load-bearing in the design:
+- **Memoization is mandatory.** `HwpSource` MUST cache each accessor's output
+  (xml bytes; the model list per stream; stream bytes) so each underlying pyhwp
+  parse happens exactly once. Without it, xml/models get re-parsed and the win
+  erodes or inverts.
+- **Realistic win is ~2–2.5×, not 3×.** Measured in-process data-access ≈ 0.34 s
+  (open 0.003 + xml 0.231 + docinfo.models 0.023 + section.models 0.080 + a few
+  cheap cats) versus a 1.68 s subprocess baseline whose shared remainder
+  (lxml parse + mapper + writer) is ~0.35 s → expected ≈ 0.7 s. The claim in this
+  spec is the **measured** figure recorded in the final report, not an
+  extrapolation.
 
 ## Architecture
 
-- **New `hwp2hwpx/hwpmodel/source.py`** — `HwpSource(hwp_path)`:
-  - Opens one `hwp5.xmlmodel.Hwp5File` (lazily/once).
-  - `xml() -> bytes` — `xmlevents().dump()` into a buffer.
-  - `docinfo_models() -> list` — list of model dicts.
-  - `section_models(name) -> list` — per `BodyText/SectionN`.
-  - `section_names() -> list` — BodyText/Section* storage names, in order.
-  - `stream_bytes(path) -> bytes` — navigate storage, `.open().read()`. Returns
-    `None` (or raises a typed error) for a missing stream so callers can skip.
-  - `summary() -> HwpSummaryInfo`-equivalent fields (see summary mapping).
-  - Serves repeated accesses from the single parsed object (no re-parse, no spawn).
+- **New `hwp2hwpx/hwpmodel/source.py` — `HwpSource(hwp_path)`, memoizing:**
+  - Opens one `hwp5.xmlmodel.Hwp5File` lazily.
+  - `xml() -> bytes` — `xmlevents().dump()`, **cached** after first call.
+  - `docinfo_models() -> list` / `section_models(name) -> list` — **cached** per
+    stream (each pyhwp `models()` walk runs once). Model dicts carry `content`
+    and `payload` (raw `bytes` — the offset-68 charPr read consumes `payload`
+    directly; no hex decode).
+  - `section_names() -> list` — BodyText/Section* in order.
+  - `stream_bytes(path) -> Optional[bytes]` — resolves only the concrete paths we
+    use (`BinData/<name>`, `PrvImage`); returns `None` if absent. Not a general
+    walker (see V2). Cached per path.
+  - `summary()` — the `HwpSummaryInfo`-equivalent object/fields.
+  - The underlying `Hwp5File` is also exposed for `rangetags.py`.
 
-- **`hwp2hwpx/hwpmodel/reader.py`** — `hwp5_xml`, `_hwp5proc_models`,
-  `_section_streams`, `hwp5_char_shapes`, `hwp5_char_shape_border_fills` consume
-  `HwpSource` instead of `subprocess.run(_hwp5proc(), ...)`. The offset-68 read
-  uses `model["payload"]` directly (already `bytes`; drop the hex-flatten helper
-  or make it accept bytes). Remove `_hwp5proc` if it has no remaining users.
+- **`reader.py`** — `hwp5_xml`, `_hwp5proc_models`, `_section_streams`,
+  `hwp5_char_shapes`, `hwp5_char_shape_border_fills` consume `HwpSource`. Offset-68
+  read uses `model["payload"]` directly (already `bytes`). Remove `_hwp5proc` and
+  the hex-flatten helper if unused.
 
-- **`hwp2hwpx/hwpmodel/bindata.py`** — `_list_bindata_streams`, per-image `cat`,
-  and `extract_preview_image` use `HwpSource.section_names()`/`stream_bytes`. The
-  PrvImage PNG-signature sniff is unchanged (operates on the returned bytes).
+- **`bindata.py`** — `_list_bindata_streams`, per-image extraction, and
+  `extract_preview_image` use `HwpSource.section_names()`/`stream_bytes`. PNG-sig
+  sniff unchanged.
 
-- **`hwp2hwpx/hwpmodel/summary.py`** — read fields from `HwpSource.summary()`
-  (property-id lookup for title/subject; direct attributes for the rest), mapping
-  to the existing `HwpSummaryInfo` model fields and the existing timestamp
-  formatting. Output must equal today's subprocess-parsed values.
+- **`summary.py`** — read fields from `HwpSource.summary()`: direct attributes for
+  author/comments/keywords/lastSavedBy/created&lastSaved times; `title`/`subject`
+  via the property set by OLE property id (PIDSI_TITLE=2, PIDSI_SUBJECT=3), or by
+  reusing pyhwp's own text dump if it reproduces the current `Key: value` lines.
+  Existing timestamp formatting and field mapping preserved.
 
-- **`hwp2hwpx/hwpmodel/rangetags.py`** — take the shared `HwpSource` (or its
-  underlying `Hwp5File`) instead of opening its own.
+- **`rangetags.py`** — take the shared `HwpSource` (use its `Hwp5File`) instead of
+  opening its own.
 
-- **`hwp2hwpx/convert.py`** — construct one `HwpSource(hwp_path)` and pass it to
-  the reader/bindata/summary/rangetags entry points.
+- **`convert.py`** — construct one `HwpSource(hwp_path)`; pass to
+  reader/bindata/summary/rangetags.
 
 ## Testing & gates
 
-- **Byte-identical output (primary gate):** for all four samples, the `.hwpx`
-  produced after the refactor is byte-identical to the pre-refactor output
-  (every zip part equal). Output must not change at all.
-- **Per-accessor equivalence:** `HwpSource.xml()` parses to the same document;
-  `stream_bytes` equals the old `cat` bytes for PrvImage + a BinData image;
-  `docinfo_models`/`section_models` yield the same `content`/`payload` the offset-68
-  and char-shape-position code consumes; `summary()` fields equal the old
-  subprocess-parsed `HwpSummaryInfo`.
-- **No subprocess remains:** a test asserts `convert()` spawns zero processes
-  (e.g. patch `subprocess.Popen`/`run` to fail, or assert the `hwp5proc` call
-  sites are gone).
-- **Performance (informational):** record before/after wall-clock per sample in
-  the final report (expected ~3× on sample 4). Not a hard threshold — the
-  byte-identical gate is the guarantee; speed is the goal.
+- **XML tree-equivalence (V1 gate):** for all four samples, `HwpSource.xml()`
+  parses to a tree that is element-for-element identical to `hwp5proc xml`
+  (tags + attribute-value sets + text, order-independent) outside
+  `PropertySetStream`.
+- **Byte-identical output (primary gate):** the `.hwpx` after the refactor is
+  byte-identical to pre-refactor output on all four samples — every zip part
+  equal. Output must not change.
+- **Stream equivalence (V2 gate):** `stream_bytes` equals `hwp5proc cat` for
+  `PrvImage` and every `BinData/*` stream across all samples; `None` for a missing
+  stream.
+- **Summary equivalence:** `summary()`-derived fields equal today's
+  subprocess-parsed `HwpSummaryInfo` on all samples.
+- **Parse-once (V3 gate):** a test proves each underlying pyhwp parse runs once —
+  e.g. wrap/patch `Hwp5File.xmlevents` and the per-stream `models` and assert one
+  call each across a full `convert()`; and assert `convert()` spawns **zero**
+  subprocesses.
+- **Performance (informational):** record measured before/after wall-clock per
+  sample in the final report (expected ~2–2.5× on sample 4). Not a hard threshold.
 - **Full suite green** via `.venv/bin/python -m pytest`.
 
 ## Non-goals
 
 - Any change to conversion output, mapper/writer logic, or fidelity behavior
   (the byte-identical gate forbids it).
-- Algorithmic/parsing changes beyond replacing the data-access layer.
-- Concurrency/parallelism (separate concern).
-- CLI batch mode and packaging (their own sub-projects, next).
+- A general-purpose OLE storage walker (V2: only the concrete paths we use).
+- Concurrency/parallelism; CLI batch mode; packaging (separate sub-projects).
 
 ## Value
 
-Removes 6–10 subprocess spawns + 1 redundant re-parse per conversion, replacing
-them with a single in-process parse — an estimated ~3× speedup on the larger
-sample (1.65 s → well under), with zero change to output, and drops the
+Replaces 6–10 subprocess spawns + 1 redundant re-parse with a single memoized
+in-process parse — a **measured ~2–2.5×** speedup on the larger sample, zero
+change to output (gated element-for-element and byte-for-byte), and drops the
 `hwp5proc` binary as a runtime dependency.
