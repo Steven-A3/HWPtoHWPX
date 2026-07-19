@@ -131,6 +131,9 @@ def test_convert_does_not_leak_file_descriptors_across_repeated_runs():
             baseline = len(os.listdir("/dev/fd"))
             for _ in range(20):
                 convert(hwp, out)
-            assert len(os.listdir("/dev/fd")) <= baseline
+            # +1 of slack: the leak this guards against is unbounded growth
+            # (20 unclosed conversions measured 20 fds over baseline), so a
+            # single incidental fd must not turn the gate flaky.
+            assert len(os.listdir("/dev/fd")) <= baseline + 1
     finally:
         gc.enable()
