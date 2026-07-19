@@ -48,12 +48,28 @@ def plan_jobs(inputs, out_file=None, outdir=None, force=False):
         else:
             action = "convert"
         jobs.append(Job(path, output, action))
+    _reject_output_collisions(jobs)
     return jobs
+
+
+def _reject_output_collisions(jobs):
+    """Raise if two jobs would write the same destination. Sequential
+    execution would let the second silently clobber the first, so this must
+    be caught here -- before any conversion runs -- rather than in run_jobs."""
+    inputs_by_output = {}
+    for job in jobs:
+        inputs_by_output.setdefault(job.output, []).append(job.input)
+    for output, inputs in inputs_by_output.items():
+        if len(inputs) > 1:
+            raise UsageError(
+                "multiple inputs resolve to the same output {!r}: {}".format(
+                    output, ", ".join(inputs)))
 
 
 def run_jobs(jobs, on_result=None):
     """Convert each job, isolating per-file failures, and report each Result to
-    `on_result` as it completes."""
+    `on_result` as it completes, in job order (jobs run sequentially, one at a
+    time, in the order given)."""
     results = []
     for job in jobs:
         if job.action == "skip":

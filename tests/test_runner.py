@@ -77,6 +77,29 @@ def test_plan_creates_nothing_on_disk(tmp_path):
     assert not (tmp_path / "nope").exists()
 
 
+def test_plan_rejects_same_basename_from_different_dirs_under_outdir():
+    # /docs/x/a.hwp and /docs/y/a.hwp both resolve to /out/a.hwpx: the second
+    # would silently clobber the first if this weren't caught at plan time.
+    with pytest.raises(UsageError) as excinfo:
+        plan_jobs(["/docs/x/a.hwp", "/docs/y/a.hwp"], outdir="/out")
+    assert os.path.join("/out", "a.hwpx") in str(excinfo.value)
+
+
+def test_plan_rejects_the_same_input_passed_twice():
+    with pytest.raises(UsageError):
+        plan_jobs(["/docs/a.hwp", "/docs/a.hwp"], outdir="/out")
+
+
+def test_plan_allows_distinct_basenames_under_outdir():
+    # Regression guard: the collision check must not be over-broad and reject
+    # ordinary multi-input --outdir batches.
+    jobs = plan_jobs(["/docs/x/a.hwp", "/docs/y/b.hwp"], outdir="/out")
+    assert [j.output for j in jobs] == [
+        os.path.join("/out", "a.hwpx"), os.path.join("/out", "b.hwpx"),
+    ]
+    assert all(j.action == "convert" for j in jobs)
+
+
 def test_run_skips_without_converting(monkeypatch):
     import hwp2hwpx.runner as runner
     calls = []
@@ -105,11 +128,17 @@ def test_run_isolates_a_failure_and_keeps_going(monkeypatch):
 
 
 def test_run_reports_each_result_as_it_completes(monkeypatch):
+    # Several jobs, so this actually pins job order rather than trivially
+    # passing with a single-element list.
     import hwp2hwpx.runner as runner
     monkeypatch.setattr(runner, "convert", lambda i, o: None)
     seen = []
-    run_jobs([Job("a.hwp", "a.hwpx", "convert")], on_result=seen.append)
-    assert [r.input for r in seen] == ["a.hwp"]
+    run_jobs([
+        Job("a.hwp", "a.hwpx", "convert"),
+        Job("b.hwp", "b.hwpx", "convert"),
+        Job("c.hwp", "c.hwpx", "skip"),
+    ], on_result=seen.append)
+    assert [r.input for r in seen] == ["a.hwp", "b.hwp", "c.hwp"]
 
 
 def test_run_treats_a_missing_input_as_a_per_file_failure():
