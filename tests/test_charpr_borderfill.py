@@ -3,15 +3,10 @@ import glob
 from lxml import etree
 
 from hwp2hwpx.hwpmodel.reader import (
-    _payload_bytes, _cs_border_fill, hwp5_char_shape_border_fills,
+    _cs_border_fill, hwp5_char_shape_border_fills,
     read_docinfo, hwp5_xml,
 )
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
-
-
-def test_payload_bytes_decodes_hex_chunks():
-    rec = {"payload": ["01 02 03", "ff 00"]}
-    assert _payload_bytes(rec) == bytes([1, 2, 3, 255, 0])
 
 
 def test_cs_border_fill_reads_offset_68():

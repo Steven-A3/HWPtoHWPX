@@ -1,9 +1,8 @@
-"""Read a .hwp file into an in-memory model, via pyhwp's hwp5proc XML dump."""
+"""Read a .hwp file into an in-memory model, via pyhwp's in-process API."""
 import os
 import sys
-import subprocess
-import json
 from lxml import etree
+from .source import _as_source
 from .model import (
     HwpFont, HwpPanose, HwpCharShape, HwpParaShape, HwpDocInfo,
     HwpRun, HwpControl, HwpParagraph, HwpSection, HwpDocument,
@@ -28,43 +27,34 @@ _FONT_LANGS = ("ko", "en", "cn", "jp", "other", "symbol", "user")
 
 
 def _hwp5proc():
-    """Locate hwp5proc next to the current interpreter, else rely on PATH."""
+    """Locate hwp5proc next to the current interpreter, else rely on PATH.
+
+    No longer used by this module's own readers (they go through HwpSource
+    in-process now); kept for tests/test_hwpsource.py's CLI-equivalence
+    checks, which deliberately shell out to compare against the old path."""
     candidate = os.path.join(os.path.dirname(sys.executable), "hwp5proc")
     return candidate if os.path.exists(candidate) else "hwp5proc"
 
 
-def hwp5_xml(hwp_path):
+def hwp5_xml(source):
     """Return pyhwp's full XML dump of the parsed HWP record tree."""
-    return subprocess.check_output([_hwp5proc(), "xml", hwp_path])
+    return _as_source(source).xml()
 
 
-def _hwp5proc_models(hwp_path, stream):
-    """Run `hwp5proc models` on a single stream and parse its JSON array."""
-    proc = subprocess.run([_hwp5proc(), "models", hwp_path, stream],
-                           capture_output=True)
-    return json.loads(proc.stdout)
-
-
-def _section_streams(hwp_path):
-    """List BodyText/SectionN storage streams, in section order."""
-    proc = subprocess.run([_hwp5proc(), "ls", hwp_path],
-                           capture_output=True, text=True)
-    return sorted(s for s in proc.stdout.split() if s.startswith("BodyText/Section"))
-
-
-def hwp5_char_shapes(hwp_path):
+def hwp5_char_shapes(source):
     """Per-paragraph [(position, charshape_id), ...] arrays in document order
     (all paragraphs, top-level and nested), from HWPTAG_PARA_CHAR_SHAPE."""
+    src = _as_source(source)
     out = []
-    for stream in _section_streams(hwp_path):
-        recs = _hwp5proc_models(hwp_path, stream)
+    for name in src.section_names():
         pending = False
-        for r in recs:
-            if r.get("type") == "Paragraph":
+        for m in src.section_models(name):
+            tname = m["type"].__name__
+            if tname == "Paragraph":
                 out.append(None)
                 pending = True
-            elif r.get("type") == "ParaCharShape" and pending:
-                out[-1] = [tuple(pair) for pair in r["content"]["charshapes"]]
+            elif tname == "ParaCharShape" and pending:
+                out[-1] = [tuple(pair) for pair in m["content"]["charshapes"]]
                 pending = False
     return out
 
@@ -76,11 +66,6 @@ def hwp5_char_shapes(hwp_path):
 _CHAR_SHAPE_BORDER_FILL_OFFSET = 68
 
 
-def _payload_bytes(rec):
-    return bytes(int(b, 16)
-                 for chunk in rec.get("payload", []) for b in chunk.split())
-
-
 def _cs_border_fill(payload):
     off = _CHAR_SHAPE_BORDER_FILL_OFFSET
     if len(payload) < off + 2:
@@ -88,12 +73,12 @@ def _cs_border_fill(payload):
     return int.from_bytes(payload[off:off + 2], "little")
 
 
-def hwp5_char_shape_border_fills(hwp_path):
+def hwp5_char_shape_border_fills(source):
     """Per-CharShape border/fill id (1-based, HWPX-compatible), in CharShape
     index order, read from the raw HWPTAG_CHAR_SHAPE payloads."""
-    recs = _hwp5proc_models(hwp_path, "DocInfo")
-    return [_cs_border_fill(_payload_bytes(r))
-            for r in recs if r.get("type") == "CharShape"]
+    src = _as_source(source)
+    return [_cs_border_fill(m["payload"])
+            for m in src.docinfo_models() if m["type"].__name__ == "CharShape"]
 
 
 # Non-text LineSeg items (table/drawing objects and extended controls) that

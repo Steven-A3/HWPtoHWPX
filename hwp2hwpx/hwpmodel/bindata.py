@@ -1,12 +1,11 @@
 """Extract embedded image binaries from an HWP file for the HWPX package.
 
-The image bytes live in the HWP OLE2 storage as BinData/BIN000N.<ext>.
-`hwp5proc cat` returns them already decompressed (byte-identical to what
-Hancom embeds), so no transcoding is needed here.
+The image bytes live in the HWP OLE2 storage as BinData/BIN000N.<ext>, already
+decompressed (byte-identical to what Hancom embeds), so no transcoding is
+needed here.
 """
-import subprocess
 from ..owpml.model import BinItem
-from .reader import _hwp5proc
+from .source import _as_source
 
 # Hancom spells the .jpg media type "image/jpg" (non-standard, but that's
 # what content.hpf ships) -- matched here for fidelity, not RFC compliance.
@@ -71,32 +70,37 @@ def _stream_num(base):
     return int(base[3:].split(".", 1)[0], 16)   # 'BIN000A.bmp' -> 10
 
 
-def _list_bindata_streams(hwp_path):
-    """{id_int: 'BinData/BIN000N.ext'} from `hwp5proc ls`."""
-    out = subprocess.run([_hwp5proc(), "ls", hwp_path],
-                         capture_output=True).stdout.decode(errors="replace")
+def _bindata_dir(src):
+    """Top-level storage/stream names in the HWP file (a document with no
+    BinData folder yields a set without 'BinData')."""
+    return set(iter(src.hwp5file))
+
+
+def _list_bindata_streams(source):
+    """{id_int: 'BinData/BIN000N.ext'}."""
+    src = _as_source(source)
     streams = {}
-    for line in out.splitlines():
-        line = line.strip()
-        if line.startswith("BinData/BIN"):
-            base = line.rsplit("/", 1)[-1]        # BIN0001.bmp
+    for name in src.hwp5file["BinData"] if "BinData" in _bindata_dir(src) else []:
+        base = name  # e.g. "BIN0001.bmp"
+        if base.startswith("BIN"):
             try:
-                streams[_stream_num(base)] = line
+                streams[_stream_num(base)] = "BinData/" + base
             except ValueError:
                 pass
     return streams
 
 
-def extract_bin_items(hwp_path, hwp_doc):
+def extract_bin_items(source, hwp_doc):
     """Returns (items, id_to_index): items named image{index} by document
     order of first reference (matching Hancom's naming), and the
     bindata-id -> sequential-index map so the mapper can resolve
     binaryItemIDRef the same way."""
+    src = _as_source(source)
     ids = _collect_pic_bindata_ids(hwp_doc)
     if not ids:
         return [], {}
     id_to_index = {bid: i for i, bid in enumerate(ids, 1)}
-    streams = _list_bindata_streams(hwp_path)
+    streams = _list_bindata_streams(src)
     items = []
     for bid in ids:
         stream = streams.get(bid)
@@ -104,8 +108,9 @@ def extract_bin_items(hwp_path, hwp_doc):
             continue   # referenced stream missing: skip (pic still refs image{index})
         idx = id_to_index[bid]
         ext = stream.rsplit(".", 1)[-1].lower() if "." in stream else "bin"
-        data = subprocess.run([_hwp5proc(), "cat", hwp_path, stream],
-                              capture_output=True).stdout
+        data = src.stream_bytes(stream)
+        if data is None:
+            continue   # unreadable stream: skip (pic still refs image{index})
         items.append(BinItem(
             id="image%d" % idx,
             filename="image%d.%s" % (idx, ext),
@@ -120,7 +125,7 @@ def _preview_png_or_none(data):
     return data if data.startswith(_PNG_SIGNATURE) else None
 
 
-def extract_preview_image(hwp_path):
+def extract_preview_image(source):
     """Return the source HWP's PrvImage stream bytes iff they are a PNG, else
     None.
 
@@ -129,8 +134,7 @@ def extract_preview_image(hwp_path):
     are skipped because an honest transcode to .png would need an imaging
     dependency the project deliberately avoids.
     """
-    proc = subprocess.run([_hwp5proc(), "cat", hwp_path, "PrvImage"],
-                          capture_output=True)
-    if proc.returncode != 0:
+    data = _as_source(source).stream_bytes("PrvImage")
+    if data is None:
         return None
-    return _preview_png_or_none(proc.stdout)
+    return _preview_png_or_none(data)
