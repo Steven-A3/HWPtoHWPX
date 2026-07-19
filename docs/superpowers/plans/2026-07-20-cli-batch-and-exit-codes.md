@@ -712,10 +712,10 @@ Run: `rg -n 'samples/[^"'"'"'*]*\.hwp' tests/test_cli.py hwp2hwpx/ ; echo "exit=
 Expected: `exit=1` (no matches). Every legitimate reference looks like
 `glob.glob("samples/3.*.hwp")[0]` and contains a `*`, so it will not match.
 
-The check is deliberately scoped to the files this plan touches. Roughly twenty
-*other* test modules hardcode sample filenames the same way — a pre-existing,
-repo-wide breach that predates this work and is tracked separately. Do not widen
-this gate to `tests/`; it will fail on files you did not touch.
+The check is deliberately scoped to the files this task touches. Twenty *other*
+test modules hardcode sample filenames the same way — a pre-existing, repo-wide
+breach cleaned up in Task 5. Do not widen this gate to `tests/` yet; it will fail
+on files you have not touched.
 
 - [ ] **Step 6: Run the full suite**
 
@@ -818,9 +818,186 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
+### Task 5: Repo-wide samples-privacy sweep
+
+**Files:**
+- Create: `tests/samplepaths.py`
+- Modify: 20 test modules, listed in the table below (exact lines given).
+
+**Interfaces:**
+- Consumes: nothing from earlier tasks. (Independent of Tasks 1–4; ordered last only so the CLI work lands first.)
+- Produces: `tests/samplepaths.py` exporting `S3`, `S3_REF`, `S4`, `S4_REF` (resolved `str` paths) and the helpers `hwp(prefix)` / `hwpx(prefix)`.
+
+**Why:** `samples/` holds private Korean government documents and is git-ignored, yet 21 committed test modules name those files literally. Task 3 fixes `tests/test_cli.py`; this task fixes the rest and makes the gate repo-wide so the breach cannot recur.
+
+**Scope discipline:** this is a mechanical substitution. Do not rename tests, restructure modules, change assertions, or "improve" anything you pass through. The only permitted edit per file is replacing a literal sample path with a `samplepaths` reference and adding the import.
+
+- [ ] **Step 1: Write the failing gate**
+
+Create `tests/test_samples_privacy.py`:
+
+```python
+import os
+import re
+import subprocess
+
+# samples/ is private and git-ignored, so no committed file may name a sample.
+# Match a samples/ path that is a literal filename rather than a prefix glob:
+# every legitimate reference contains a '*'.
+_LITERAL_SAMPLE = re.compile(r"samples/[^\"'*\s]*\.hwpx?")
+
+
+def _tracked_python_files():
+    out = subprocess.run(["git", "ls-files", "*.py"],
+                         capture_output=True, text=True, check=True).stdout
+    return [p for p in out.splitlines() if p]
+
+
+def test_no_committed_file_names_a_sample():
+    offenders = []
+    for path in _tracked_python_files():
+        with open(path, encoding="utf-8") as handle:
+            for lineno, line in enumerate(handle, 1):
+                match = _LITERAL_SAMPLE.search(line)
+                if match and not match.group(0).startswith("samples/goldens"):
+                    offenders.append("%s:%d" % (path, lineno))
+    assert offenders == [], (
+        "committed files name private samples; use tests/samplepaths.py: %s"
+        % ", ".join(offenders))
+```
+
+- [ ] **Step 2: Run the gate to verify it fails**
+
+Run: `.venv/bin/python -m pytest tests/test_samples_privacy.py -v`
+Expected: FAIL, listing roughly 33 offending `file:line` locations across 20 modules.
+
+- [ ] **Step 3: Create the shared resolver**
+
+Create `tests/samplepaths.py`:
+
+```python
+"""Resolve sample documents by prefix.
+
+samples/ holds private documents and is git-ignored, so no committed file may
+name one. Tests locate their samples through this module instead, by the
+number/tag prefix the project uses to refer to them (3, 4, 2013, ★131008).
+"""
+import glob
+
+
+def _one(pattern):
+    matches = sorted(glob.glob(pattern))  # sorted: never depend on FS order
+    if not matches:
+        raise FileNotFoundError("no sample matches %s" % pattern)
+    return matches[0]
+
+
+def hwp(prefix):
+    """The source document whose filename starts with `prefix`."""
+    return _one("samples/%s*.hwp" % prefix)
+
+
+def hwpx(prefix):
+    """Hancom's own .hwpx export of that document -- the fidelity reference."""
+    return _one("samples/%s*.hwpx" % prefix)
+
+
+S3 = hwp("3.")
+S3_REF = hwpx("3.")
+S4 = hwp("4.")
+S4_REF = hwpx("4.")
+```
+
+`tests/` has an `__init__.py`, so it is a package: import these as
+`from tests.samplepaths import S3`.
+
+- [ ] **Step 4: Verify the resolver returns the same paths the tests use today**
+
+Run:
+
+```bash
+.venv/bin/python -c "from tests.samplepaths import S3, S3_REF, S4, S4_REF; \
+import os; print(all(os.path.isfile(p) for p in (S3, S3_REF, S4, S4_REF)))"
+```
+
+Expected: `True`.
+
+- [ ] **Step 5: Substitute in each module**
+
+In every file below, add the import after the existing imports and replace the literal on each listed line. The four literals map exactly to the four constants: the sample-3 `.hwp` → `S3`, sample-3 `.hwpx` → `S3_REF`, sample-4 `.hwp` → `S4`, sample-4 `.hwpx` → `S4_REF`.
+
+| File | Lines | Import to add |
+|---|---|---|
+| `tests/test_convert_tabs.py` | 6 | `from tests.samplepaths import S3` |
+| `tests/test_xmlnorm.py` | 17 | `from tests.samplepaths import S3_REF` |
+| `tests/test_convert_secpr.py` | 11, 12, 60, 61 | `from tests.samplepaths import S3, S3_REF, S4, S4_REF` |
+| `tests/test_convert_docsettings.py` | 9, 10, 40, 41 | `from tests.samplepaths import S3, S3_REF, S4, S4_REF` |
+| `tests/test_convert_styles.py` | 6 | `from tests.samplepaths import S3` |
+| `tests/test_convert_lineseg.py` | 4 | `from tests.samplepaths import S3` |
+| `tests/test_convert_line.py` | 7, 8, 9, 10 | `from tests.samplepaths import S3, S3_REF, S4, S4_REF` |
+| `tests/test_reader_dump.py` | 4 | `from tests.samplepaths import S3` |
+| `tests/test_convert_endtoend.py` | 6 | `from tests.samplepaths import S3` |
+| `tests/test_fidelity_diff.py` | 33 | `from tests.samplepaths import S3, S3_REF` |
+| `tests/test_convert_charpr.py` | 6 | `from tests.samplepaths import S3` |
+| `tests/test_convert_parapr.py` | 6 | `from tests.samplepaths import S3` |
+| `tests/test_convert_tables.py` | 6 | `from tests.samplepaths import S3` |
+| `tests/test_convert_inline.py` | 4 | `from tests.samplepaths import S3` |
+| `tests/test_convert_tail.py` | 4, 5 | `from tests.samplepaths import S3, S4` |
+| `tests/test_reader_tab.py` | 4 | `from tests.samplepaths import S4` |
+| `tests/test_scaffold.py` | 4 | `from tests.samplepaths import S3` |
+| `tests/test_bindata.py` | 6, 7, 8 | `from tests.samplepaths import S3, S4, S4_REF` |
+| `tests/test_convert_picture.py` | 6, 7, 8 | `from tests.samplepaths import S3, S4, S4_REF` |
+
+Two shapes appear. A module-level constant bound to a literal:
+
+```python
+SAMPLE_HWP = "samples/<literal>.hwp"       # before
+SAMPLE_HWP = S3                            # after
+```
+
+and a literal used inline, in a list, tuple, or dict key:
+
+```python
+PAIRS = [
+    ("samples/<literal>.hwp", "samples/<literal>.hwpx"),    # before
+]
+PAIRS = [
+    (S3, S3_REF),                                            # after
+]
+```
+
+Also fold `tests/test_cli.py` into the shared convention: Task 3 gave it a local
+`_sample()` helper that globs directly. Delete that helper, import `S3`, and use
+it at the call sites. Two conventions for the same thing is one too many.
+
+Dict keys in `tests/test_convert_secpr.py:60-61` and `tests/test_convert_docsettings.py:40-41` are looked up elsewhere in the same module using the same constant, so substituting both the key and the lookup keeps them matched. Leave the numeric thresholds untouched.
+
+- [ ] **Step 6: Run the gate and the full suite**
+
+Run: `.venv/bin/python -m pytest tests/test_samples_privacy.py -v`
+Expected: 1 passed.
+
+Run: `.venv/bin/python -m pytest -q` (timeout 420000 ms)
+Expected: everything passes, with the **same** count as before the sweep plus the one new privacy test. A test that now *errors* on a missing sample means a prefix resolved wrongly — fix the prefix, do not restore a literal.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add tests/samplepaths.py tests/test_samples_privacy.py tests/test_*.py
+git commit -m "test: locate samples by prefix instead of naming private files
+
+samples/ is git-ignored private material, but 21 test modules named those
+documents literally. Route every reference through tests/samplepaths.py and
+add a gate so the breach cannot recur.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-Review
 
-**Spec coverage.** Command surface → Task 3. `--json` mandatory value (V3) → Task 3 Steps 1/3, gated by `test_json_flag_does_not_swallow_a_positional_input`. Atomic writes (V2) → Task 1. Overwrite policy and `--force` requiring an explicit destination (V1) → Task 2 (`plan_jobs`) with the CLI gate in Task 3. Exit contract 0/1/2 → Task 3, including "all skipped exits 0". Architecture (`runner.py` + thin `cli.py`) → Tasks 2 and 3. Error handling (usage errors before any conversion; per-file isolation; missing input is a per-file failure; no traceback) → Tasks 2 and 3. JSON report shape → Task 3. Samples-privacy fix → Task 3, verified by the grep in Step 5. README → Task 4. Non-goals (parallelism, directory walking, progress bars) have no tasks, correctly.
+**Spec coverage.** Samples-privacy fix → Task 3 for `tests/test_cli.py`, Task 5 for the twenty other modules the self-review turned up, with a repo-wide gate. Command surface → Task 3. `--json` mandatory value (V3) → Task 3 Steps 1/3, gated by `test_json_flag_does_not_swallow_a_positional_input`. Atomic writes (V2) → Task 1. Overwrite policy and `--force` requiring an explicit destination (V1) → Task 2 (`plan_jobs`) with the CLI gate in Task 3. Exit contract 0/1/2 → Task 3, including "all skipped exits 0". Architecture (`runner.py` + thin `cli.py`) → Tasks 2 and 3. Error handling (usage errors before any conversion; per-file isolation; missing input is a per-file failure; no traceback) → Tasks 2 and 3. JSON report shape → Task 3. Samples-privacy fix → Task 3, verified by the grep in Step 5. README → Task 4. Non-goals (parallelism, directory walking, progress bars) have no tasks, correctly.
 
 **Placeholder scan.** No TBDs; every code step carries complete code; every command has an expected result.
 
