@@ -153,10 +153,15 @@ entirely in-process. Tests look for the binary next to the current Python
 interpreter first, then fall back to `PATH`.
 The suite currently has around 560 tests, covering the Reader, each Mapper
 module, the Writer/packaging layer, and fidelity scoring against sample
-document pairs. Sample `.hwp`/Hancom-produced `.hwpx` pairs used as
-ground truth for fidelity tests live under `samples/`, which is git-ignored
-and not included in this repository (they are private test documents, not
-required to run the non-fidelity-comparison parts of the suite).
+document pairs. `.hwp`/Hancom-produced `.hwpx` pairs used as ground truth
+for fidelity tests live under `samples/`. One pair, `samples/test_document.*`,
+is a document authored for this project with no confidential content, and is
+committed to the repository; it backs the public-fixture tests
+(`tests/test_public_fixture.py`) and is the only sample CI can see. The rest
+of `samples/` is a private corpus of real government documents, is
+git-ignored, and is not included in this repository; tests that need it skip
+automatically when it's absent (see `tests/conftest.py`), so it is not
+required to run the non-fidelity-comparison parts of the suite.
 
 ## Fidelity approach and limitations
 
