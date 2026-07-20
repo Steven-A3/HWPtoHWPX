@@ -44,3 +44,19 @@ def test_content_hpf_meta_blocks_present():
     assert ('<opf:meta name="creator" content="text">%s</opf:meta>'
             % si.creator) in xml
     assert '<opf:meta name="keyword" content="text"/>' in xml
+    # Deriving the expectation from read_summary_info alone would be circular:
+    # convert() calls the same parser, so a bug *inside* it (e.g. creator and
+    # title transposed) leaves both sides equally wrong and the test green.
+    # Hancom's own export is the independent oracle -- compare per meta name,
+    # so the check is on values rather than on document-order or formatting.
+    def _meta(doc):
+        return dict(re.findall(
+            r'<opf:meta name="([^"]+)" content="text">([^<]*)</opf:meta>',
+            doc.decode("utf-8")))
+
+    ours, theirs = _meta(o), _meta(t)
+    # creator is the meta Hancom emits as a plain value here; title is not in
+    # this block, so it is not comparable this way.
+    assert "creator" in theirs, "reference lacks a creator meta block"
+    assert ours.get("creator") == theirs["creator"], (
+        "creator meta differs from Hancom's export")

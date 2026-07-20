@@ -49,8 +49,17 @@ import pytest
 #   - `"samples/x.hwp.bak"`: the extension check requires the literal to end
 #     at ".hwp"/".hwpx" or hit a non-word character there; a suffix tacked on
 #     after a *word* character (rare in practice) would still slip through.
+#   - treats a markdown backtick span and a markdown link target as delimiters
+#     too, not just Python quotes: docs/**/*.md is in scope, and prose there
+#     writes paths as `samples/x.hwp` or [text](samples/x.hwp). Two real
+#     planning documents leaked a filename in exactly the backtick form and
+#     were invisible to the quote-only version of this pattern.
+#   - excludes '<' and '>' from the body: docs write metavariable placeholders
+#     as `samples/<name>.hwp`, and no real filename can contain either
+#     character, so this distinguishes a placeholder from a leak.
 _LITERAL_SAMPLE = re.compile(
-    r"""['"][^'"*]*(?<=['"/\\])(?P<path>samples[/\\][^'"*]*\.hwpx?)(?=['"])""",
+    r"""['"`(\[][^'"`*)\]<>]*(?<=['"`(\[/\\])"""
+    r"""(?P<path>samples[/\\][^'"`*)\]<>]*\.hwpx?)(?=['"`)\]])""",
     re.IGNORECASE,
 )
 
@@ -296,3 +305,20 @@ def test_gate_does_not_flag_an_unrelated_word_ending_in_samples():
     # quote or a path separator, so "not_samples/" isn't mistaken for the
     # samples/ directory.
     assert not _names_a_sample('X = "not_samples/made-up-name.hwp"\n')
+
+
+def test_gate_catches_a_markdown_backtick_span():
+    # docs/**/*.md is in scope, and prose there writes paths in backticks
+    # rather than Python quotes. Two planning documents leaked a filename in
+    # exactly this form and were invisible to the quote-only pattern.
+    assert _names_a_sample("see `samples/made up report name.hwp` for details\n")
+
+
+def test_gate_catches_a_markdown_link_target():
+    assert _names_a_sample("[the sample](samples/made up report name.hwp)\n")
+
+
+def test_gate_ignores_a_metavariable_placeholder():
+    # `samples/<name>.hwp` documents a naming scheme; no real filename can
+    # contain angle brackets, so this must not be mistaken for a leak.
+    assert not _names_a_sample("planned location: `samples/<name>.hwp`\n")
