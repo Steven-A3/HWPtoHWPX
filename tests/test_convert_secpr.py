@@ -4,12 +4,13 @@ from lxml import etree
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import S3, S3_REF, S4, S4_REF
 
 HP = "http://www.hancom.co.kr/hwpml/2011/paragraph"
 
 PAIRS = [
-    ("samples/3.과업지시서_070.hwp", "samples/3.과업지시서_070.hwpx"),
-    ("samples/4.제안요청서_070.hwp", "samples/4.제안요청서_070.hwpx"),
+    (S3, S3_REF),
+    (S4, S4_REF),
 ]
 
 
@@ -57,8 +58,8 @@ def test_secpr_cluster_tags_leave_miss_list(tmp_path, hwp, ref):
 # is bounded by unimplemented drawing objects (pic/img/line/matrices — a separate
 # milestone), not by secPr, so its floor sits below sample 3's.
 _SECTION0_FLOOR = {
-    "samples/3.과업지시서_070.hwp": 0.99,
-    "samples/4.제안요청서_070.hwp": 0.966,
+    S3: 0.99,
+    S4: 0.966,
 }
 
 

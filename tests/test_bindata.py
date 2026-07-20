@@ -2,10 +2,7 @@ import glob
 import zipfile
 from hwp2hwpx.hwpmodel.reader import hwp5_xml, read_document
 from hwp2hwpx.hwpmodel.bindata import extract_bin_items
-
-S4 = "samples/4.제안요청서_070.hwp"
-S4_REF = "samples/4.제안요청서_070.hwpx"
-S3 = "samples/3.과업지시서_070.hwp"
+from tests.samplepaths import S3, S4, S4_REF
 
 
 def _doc(hwp):

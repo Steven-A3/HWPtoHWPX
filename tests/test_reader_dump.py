@@ -1,7 +1,8 @@
 from hwp2hwpx.hwpmodel.reader import hwp5_xml
 from lxml import etree
+from tests.samplepaths import S3
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = S3
 
 
 def test_dump_is_wellformed_xml():

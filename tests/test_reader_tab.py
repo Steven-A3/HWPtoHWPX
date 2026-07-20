@@ -1,7 +1,8 @@
 from hwp2hwpx.hwpmodel.reader import read_document
 from hwp2hwpx.hwpmodel.model import HwpControl
+from tests.samplepaths import S4
 
-SAMPLE2 = "samples/4.제안요청서_070.hwp"
+SAMPLE2 = S4
 
 
 def _all_controls():

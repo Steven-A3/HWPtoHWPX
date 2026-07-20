@@ -29,13 +29,14 @@ development and measure output quality:
                                     [Fidelity harness] ◀── diff ─┘  vs Hancom .hwpx
 ```
 
-- **Reader** (`hwp2hwpx/hwpmodel/`) — Parses the `.hwp` binary via pyhwp's
-  `hwp5proc` CLI (invoked as a subprocess to dump an XML representation of
-  the CFB/record structure, plus `hwp5proc ls`/`cat` for embedded binary
-  data and `hwp5proc summaryinfo` for document metadata) and builds a
-  normalized in-memory **HWP model** (`hwpmodel/model.py`): fonts, character
-  and paragraph shapes, styles, border/fills, numbering, sections,
-  paragraphs, runs, tables, drawings, and controls.
+- **Reader** (`hwp2hwpx/hwpmodel/`) — Parses the `.hwp` binary in-process via
+  pyhwp's `Hwp5File` API: `hwpmodel/source.py`'s `HwpSource` opens the file
+  once and memoizes the XML representation of the CFB/record structure,
+  embedded binary data, and summary info as each is first requested, with no
+  subprocess spawned. Builds a normalized in-memory **HWP model**
+  (`hwpmodel/model.py`): fonts, character and paragraph shapes, styles,
+  border/fills, numbering, sections, paragraphs, runs, tables, drawings, and
+  controls.
 - **Mapper** (`hwp2hwpx/mapper/`) — Pure model-to-model translation from the
   HWP model to an **OWPML model** (`owpml/model.py`), with one module per
   concern: `char_pr`, `para_pr`, `border_fill`, `style`, `tab`, `bullet`,
@@ -64,10 +65,11 @@ model contract holds.
 
 Requires **Python 3.9+**. Dependencies (see `pyproject.toml`):
 
-- [`pyhwp`](https://pypi.org/project/pyhwp/) — provides the `hwp5proc` CLI
-  the Reader shells out to, for parsing the HWP binary format.
+- [`pyhwp`](https://pypi.org/project/pyhwp/) — provides the `Hwp5File` API
+  the Reader uses in-process to parse the HWP binary format, and the
+  `hwp5proc` CLI used by a handful of test fixtures (not by the Reader).
 - [`lxml`](https://pypi.org/project/lxml/) — XML construction and parsing.
-- `six` — an undeclared runtime dependency of pyhwp's `hwp5proc`.
+- `six` — an undeclared runtime dependency of pyhwp.
 
 ```bash
 python -m venv .venv
@@ -81,13 +83,50 @@ dependencies, and puts both the `hwp2hwpx` and `hwp5proc` executables on
 
 ## Usage
 
-### Command line
-
-```bash
-hwp2hwpx input.hwp -o output.hwpx
+```
+hwp2hwpx [-o FILE | --outdir DIR] [--force] [--json FILE]
+         [-q | -v] [--version] INPUT [INPUT ...]
 ```
 
-(`hwp2hwpx/cli.py` — `-o`/`--output` is required; the input path must exist.)
+Convert one document, naming the output:
+
+```
+hwp2hwpx report.hwp -o report.hwpx
+```
+
+Convert many, writing them beside their inputs (existing outputs are skipped):
+
+```
+hwp2hwpx docs/*.hwp
+```
+
+Convert many into one directory, overwriting what is already there:
+
+```
+hwp2hwpx docs/*.hwp --outdir out/ --force
+```
+
+Options:
+
+- `-o FILE` — output path; valid with exactly one input.
+- `--outdir DIR` — directory to write outputs into; created if absent.
+- With neither, each output lands beside its input as `<name>.hwpx`.
+- `--force` — overwrite existing outputs. Requires `-o` or `--outdir`, so that
+  overwriting a directory of documents in place has to be asked for by name.
+- `--json FILE` — write a machine-readable report (`-` for stdout) with per-file
+  status and counts.
+- `-q` — suppress per-failure messages; `-v` — report every file and a summary.
+
+Existing outputs are skipped rather than overwritten, so a large batch can be
+re-run cheaply. Failures do not stop the run: every input is attempted.
+
+Exit codes:
+
+| code | meaning |
+|------|---------|
+| 0 | no failures (skipped files are not failures) |
+| 1 | one or more files failed to convert |
+| 2 | usage error |
 
 ### As a library
 

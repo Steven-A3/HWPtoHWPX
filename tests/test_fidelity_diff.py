@@ -29,8 +29,9 @@ import os
 import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
+from tests.samplepaths import S3, S3_REF
 
-SAMPLES = [("samples/3.과업지시서_070.hwp", "samples/3.과업지시서_070.hwpx")]
+SAMPLES = [(S3, S3_REF)]
 
 
 @pytest.mark.parametrize("hwp,ref", SAMPLES)

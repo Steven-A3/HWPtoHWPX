@@ -9,3 +9,7 @@ build/
 
 # Private test documents — never publish (government docs)
 samples/
+
+# Fixtures derived from private samples (e.g. hwp5proc xml dumps) — generated
+# on demand by tests/samplepaths.py, must never be committed.
+tests/fixtures/

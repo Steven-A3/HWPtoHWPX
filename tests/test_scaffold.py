@@ -1,7 +1,8 @@
 from hwp2hwpx import constants
 from hwp2hwpx.cli import main
+from tests.samplepaths import S3
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = S3
 
 
 def test_namespaces_present():

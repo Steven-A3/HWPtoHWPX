@@ -4,10 +4,11 @@ import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import S3, S3_REF, S4, S4_REF
 
 PAIRS = [
-    ("samples/3.과업지시서_070.hwp", "samples/3.과업지시서_070.hwpx"),
-    ("samples/4.제안요청서_070.hwp", "samples/4.제안요청서_070.hwpx"),
+    (S3, S3_REF),
+    (S4, S4_REF),
 ]
 
 
@@ -37,8 +38,8 @@ def test_begin_num_present_all_one(tmp_path, hwp, ref):
 # (x29, Hancom runtime font substitution, not derivable) plus subscript (x4) —
 # unrelated to doc-settings — so its floor sits below sample 3's.
 _HEADER_FLOOR = {
-    "samples/3.과업지시서_070.hwp": 0.998,
-    "samples/4.제안요청서_070.hwp": 0.995,
+    S3: 0.998,
+    S4: 0.995,
 }
 
 

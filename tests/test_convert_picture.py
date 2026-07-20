@@ -2,10 +2,7 @@ import zipfile
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
-
-S4 = "samples/4.제안요청서_070.hwp"
-S4_REF = "samples/4.제안요청서_070.hwpx"
-S3 = "samples/3.과업지시서_070.hwp"
+from tests.samplepaths import S3, S4, S4_REF
 
 
 def _convert(hwp, tmp_path, name):

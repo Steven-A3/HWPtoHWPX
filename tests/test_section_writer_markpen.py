@@ -12,12 +12,12 @@ def _run_xml(run):
 
 def test_markpen_markers_emit_inside_t_with_tail_text():
     run = Run(char_pr_id=96, texts=[
-        Text("낙찰, "), MarkpenBegin(color="#FFFFFF"),
-        Text("계약체결"), MarkpenEnd(),
+        Text("before, "), MarkpenBegin(color="#FFFFFF"),
+        Text("highlighted"), MarkpenEnd(),
     ])
     xml = _run_xml(run)
     assert '<hp:markpenBegin color="#FFFFFF"/>' in xml
     assert '<hp:markpenEnd/>' in xml
     # text before the begin marker stays on hp:t; text after begin is its tail
-    assert "낙찰, <hp:markpenBegin" in xml
-    assert 'color="#FFFFFF"/>계약체결<hp:markpenEnd/>' in xml
+    assert "before, <hp:markpenBegin" in xml
+    assert 'color="#FFFFFF"/>highlighted<hp:markpenEnd/>' in xml
