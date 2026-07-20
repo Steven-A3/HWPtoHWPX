@@ -1,3 +1,5 @@
+import pytest
+
 from tests.samplepaths import hwp as _hwp
 
 from hwp2hwpx.hwpmodel.reader import hwp5_char_shapes, _item_width, _resolve_item_char_shapes
@@ -20,6 +22,7 @@ def test_char_shapes_table_para_192_positions():
     assert [(0, 46), (8, 141)] in arrs
 
 
+@pytest.mark.sample_free
 def test_item_widths():
     assert _item_width("Text", "abc") == 3
     assert _item_width("Text", " ") == 2        # BMP PUA + space
@@ -29,6 +32,7 @@ def test_item_widths():
     assert _item_width("GShapeObjectControl", None) == 8
 
 
+@pytest.mark.sample_free
 def test_resolver_assigns_object_char_shape_from_array():
     # table (pos 0) then paragraph-break (pos 8): table -> 46, break -> 141
     items = [("TableControl", None, None), ("ControlChar", None, "141")]

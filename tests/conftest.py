@@ -13,6 +13,12 @@ Two exclusions are load-bearing:
   - TEST_DOC/TEST_DOC_REF name the *public* fixture, which is committed and
     present in CI. Treating them as private-sample names would skip the one
     end-to-end gate CI can actually run.
+
+The module-level skip is coarse: a module that mixes sample-dependent tests
+with sample-independent ones (e.g. synthetic-payload parsing, dataclass
+defaults) loses the independent ones too, silently, forever, in CI. A test
+that genuinely needs no sample opts back in with `@pytest.mark.sample_free`;
+`pytest_collection_modifyitems` below honors it as an explicit override.
 """
 import types
 
@@ -35,11 +41,23 @@ def _imported_samplepaths(module):
                for value in vars(module).values())
 
 
+def pytest_configure(config):
+    # Registered here (not just documented) so --strict-markers accepts it
+    # and -W error doesn't turn pytest's own "unknown marker" warning fatal.
+    config.addinivalue_line(
+        "markers",
+        "sample_free: test needs no private samples/ corpus, even though "
+        "its module also holds tests that do; runs even when the corpus "
+        "is absent.",
+    )
+
+
 def pytest_collection_modifyitems(items):
     if samplepaths.samples_available():
         return
     skip = pytest.mark.skip(reason="private samples/ corpus not present")
     for item in items:
         module = getattr(item, "module", None)
-        if module is not None and _imported_samplepaths(module):
+        if module is not None and _imported_samplepaths(module) \
+                and not item.get_closest_marker("sample_free"):
             item.add_marker(skip)

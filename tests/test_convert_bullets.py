@@ -1,6 +1,8 @@
 """Bullets milestone: the IdMappings/Bullet record becomes an <hh:bullets>
 block in refList, between <hh:tabProperties> and <hh:paraProperties>."""
 import re
+
+import pytest
 from lxml import etree
 
 from hwp2hwpx.hwpmodel.model import HwpBullet
@@ -33,6 +35,7 @@ def _id_mappings(inner):
     return etree.fromstring("<IdMappings>" + inner + "</IdMappings>")
 
 
+@pytest.mark.sample_free
 def test_reader_parses_bullet_record():
     idm = _id_mappings('<Bullet align="left" auto-indent="1" char="-" '
                        'charshape-id="-1" flags="00000008" space="50" width="0"/>')
@@ -41,6 +44,7 @@ def test_reader_parses_bullet_record():
         width_adjust=0, char_shape_id=-1)]
 
 
+@pytest.mark.sample_free
 def test_reader_no_bullet_record_yields_empty_list():
     assert _parse_bullets(_id_mappings("")) == []
 
@@ -58,6 +62,7 @@ def test_sample4_docinfo_has_no_bullets():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_mapper_maps_bullet_with_sentinel_char_pr():
     # charshape-id -1 ("none") becomes OWPML's unsigned-32-bit spelling.
     out = map_bullets([HwpBullet(char="-", align="left", auto_indent=1,
@@ -68,12 +73,14 @@ def test_mapper_maps_bullet_with_sentinel_char_pr():
                           char_pr_id=4294967295)]
 
 
+@pytest.mark.sample_free
 def test_mapper_ids_are_one_based_and_align_maps():
     out = map_bullets([HwpBullet(align="left"), HwpBullet(align="center")])
     assert [b.id for b in out] == [1, 2]
     assert [b.align for b in out] == ["LEFT", "CENTER"]
 
 
+@pytest.mark.sample_free
 def test_mapper_keeps_real_char_shape_id():
     assert map_bullets([HwpBullet(char_shape_id=7)])[0].char_pr_id == 7
 

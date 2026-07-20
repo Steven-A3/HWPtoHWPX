@@ -2,6 +2,8 @@
 <hc:fillBrush><hc:gradation>...<hc:color/>...</hc:gradation></hc:fillBrush>.
 Scoped to gradation only; the borderFill-id offset (#68) is a known residual."""
 import re
+
+import pytest
 from lxml import etree
 
 from hwp2hwpx.hwpmodel.model import HwpBorderFill, HwpGradation
@@ -25,6 +27,7 @@ def _id_mappings(inner):
 
 # ---- reader ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_reader_parses_gradation():
     idm = _id_mappings(
         '<BorderFill gradation="1"><FillGradation attribute-name="fill_gradation" '
@@ -38,6 +41,7 @@ def test_reader_parses_gradation():
         colors=["#ffffff", "#bbbbbb"])
 
 
+@pytest.mark.sample_free
 def test_reader_no_gradation_is_none():
     bf = _parse_border_fills(_id_mappings("<BorderFill/>"))[0]
     assert bf.gradation is None
@@ -59,6 +63,7 @@ def test_samples_3_4_have_no_gradation():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_mapper_maps_gradation_type_and_uppercases_colors():
     out = _map_gradation(HwpGradation(type="circular", angle=0, center_x=0,
                                       center_y=0, step=50,
@@ -68,6 +73,7 @@ def test_mapper_maps_gradation_type_and_uppercases_colors():
                             colors=["#0080C0", "#3CBFFF"])
 
 
+@pytest.mark.sample_free
 def test_mapper_linear_maps_to_linear():
     out = _map_gradation(HwpGradation(type="linear", colors=["#ffffff"]))
     assert out.type == "LINEAR"

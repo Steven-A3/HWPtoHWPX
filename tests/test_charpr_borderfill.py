@@ -1,3 +1,5 @@
+import pytest
+
 from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
 from lxml import etree
@@ -9,11 +11,13 @@ from hwp2hwpx.hwpmodel.reader import (
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
 
+@pytest.mark.sample_free
 def test_cs_border_fill_reads_offset_68():
     payload = bytes(68) + bytes([5, 0]) + bytes(4)   # len 74, u16le at 68 == 5
     assert _cs_border_fill(payload) == 5
 
 
+@pytest.mark.sample_free
 def test_cs_border_fill_short_payload_falls_back_to_one():
     assert _cs_border_fill(bytes(40)) == 1
 

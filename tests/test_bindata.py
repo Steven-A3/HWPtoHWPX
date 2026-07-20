@@ -1,5 +1,8 @@
 import glob
 import zipfile
+
+import pytest
+
 from hwp2hwpx.hwpmodel.reader import hwp5_xml, read_document
 from hwp2hwpx.hwpmodel.bindata import extract_bin_items
 from tests.samplepaths import S3, S4, S4_REF
@@ -44,6 +47,7 @@ def test_extract_reaches_pic_nested_in_container():
     assert len(jpeg.data) > 0
 
 
+@pytest.mark.sample_free
 def test_stream_num_parses_hex_not_decimal():
     # pyhwp names BinData streams BIN%04X (hex); bindata-id is decimal. The two
     # only coincide for ids 1-9, so parsing must be hex to survive >= 10 images.

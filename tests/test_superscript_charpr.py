@@ -1,5 +1,6 @@
 """Superscript charPr: charshapeflags bit 15 -> <hh:supscript/> (mirror of the
 subscript milestone, which uses bit 16). Emitted before <hh:subscript>."""
+import pytest
 from lxml import etree
 
 from hwp2hwpx.constants import NS
@@ -35,6 +36,7 @@ def test_reader_superscript_and_subscript_independent():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_mapper_passes_superscript_through():
     cps = map_char_shapes([HwpCharShape(index=0, base_size=1000, superscript=True),
                            HwpCharShape(index=1, base_size=1000)])
@@ -43,18 +45,21 @@ def test_mapper_passes_superscript_through():
 
 # ---- writer ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_writer_emits_supscript():
     header = Header(char_prs=[CharPr(id=0, superscript=True)])
     ce = etree.fromstring(header_xml(header)).find(".//{%s}charPr" % NS["hh"])
     assert ce.find("{%s}supscript" % NS["hh"]) is not None
 
 
+@pytest.mark.sample_free
 def test_writer_no_supscript_when_false():
     header = Header(char_prs=[CharPr(id=0, superscript=False)])
     ce = etree.fromstring(header_xml(header)).find(".//{%s}charPr" % NS["hh"])
     assert ce.find("{%s}supscript" % NS["hh"]) is None
 
 
+@pytest.mark.sample_free
 def test_writer_supscript_precedes_subscript():
     # OWPML schema order: supscript before subscript when both are present.
     header = Header(char_prs=[CharPr(id=0, superscript=True, subscript=True)])

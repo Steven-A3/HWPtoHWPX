@@ -1,4 +1,6 @@
 """Table/cell borderfill-id refs are raw (1-based) and clamped into [1, N]."""
+import pytest
+
 from hwp2hwpx.hwpmodel.reader import read_document
 
 from tests.samplepaths import fixture3
@@ -74,17 +76,20 @@ def _synthetic_table():
     return next(r.table for r in para.runs if r.table is not None)
 
 
+@pytest.mark.sample_free
 def test_out_of_range_table_borderfill_id_clamps_to_count():
     # 2 BorderFill defs -> valid ids are 1..2. A raw ref of 9999 must not
     # dangle; it clamps to the last valid id (2), not 9998.
     assert _synthetic_table().border_fill_id == 2
 
 
+@pytest.mark.sample_free
 def test_out_of_range_cell_borderfill_id_clamps_to_count():
     cell = _synthetic_table().table_rows[0].cells[0]
     assert cell.border_fill_id == 2
 
 
+@pytest.mark.sample_free
 def test_out_of_range_para_shape_borderfill_id_clamps_to_count():
     # ParaShape borderFillIDRef must resolve to a defined BorderFill too;
     # a raw id past the last definition (9999) clamps down to count (2).
@@ -92,11 +97,13 @@ def test_out_of_range_para_shape_borderfill_id_clamps_to_count():
     assert ps[1].border_fill_id == 2
 
 
+@pytest.mark.sample_free
 def test_below_range_para_shape_borderfill_id_clamps_to_1():
     ps = _synthetic_doc().docinfo.para_shapes
     assert ps[2].border_fill_id == 1
 
 
+@pytest.mark.sample_free
 def test_in_range_para_shape_borderfill_id_is_unchanged():
     ps = _synthetic_doc().docinfo.para_shapes
     assert ps[0].border_fill_id == 1

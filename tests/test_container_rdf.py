@@ -1,5 +1,7 @@
 import tempfile
 
+import pytest
+
 from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
@@ -53,6 +55,7 @@ def test_container_xml_byte_equals_reference():
         assert got == want, "container.xml mismatch for sample %s" % n
 
 
+@pytest.mark.sample_free
 def test_container_rdf_multi_section_unit():
     from hwp2hwpx.owpml.package_parts import container_rdf
 

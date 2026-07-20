@@ -1,6 +1,9 @@
+import pytest
+
 from hwp2hwpx.fidelity.diff import element_counts, score_part
 
 
+@pytest.mark.sample_free
 def test_element_counts_strips_namespace():
     xml = (b'<hs:sec xmlns:hs="urn:s" xmlns:hp="urn:p">'
            b'<hp:p><hp:run><hp:t>a</hp:t></hp:run>'
@@ -11,12 +14,14 @@ def test_element_counts_strips_namespace():
     assert counts["t"] == 2
 
 
+@pytest.mark.sample_free
 def test_score_identical_is_one():
     xml = b'<r><a/><a/><b/></r>'
     s = score_part(xml, xml)
     assert s["match"] == 1.0
 
 
+@pytest.mark.sample_free
 def test_score_partial():
     ours = b'<r><a/></r>'
     theirs = b'<r><a/><a/><b/></r>'  # 3 elements under root; we have 1 of the a's, 0 b
@@ -26,7 +31,6 @@ def test_score_partial():
 
 
 import os
-import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 from tests.samplepaths import S3, S3_REF

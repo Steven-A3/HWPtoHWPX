@@ -1,3 +1,4 @@
+import pytest
 from lxml import etree
 from hwp2hwpx.hwpmodel.reader import parse_paragraph, read_document, hwp5_xml
 from hwp2hwpx.mapper.body import map_paragraph
@@ -10,6 +11,7 @@ def _para(inner):
     return parse_paragraph(etree.fromstring(xml))
 
 
+@pytest.mark.sample_free
 def test_pagehide_attaches_to_following_text_run():
     p = _para('<PageHide basepage="0" header="0" footer="0" pageborder="0" '
               'pagefill="0" pagenumber="1"/>'
@@ -20,22 +22,26 @@ def test_pagehide_attaches_to_following_text_run():
     assert run.ctrls[0].hide_header == 0
 
 
+@pytest.mark.sample_free
 def test_two_pagehides_attach():
     p = _para('<PageHide pagenumber="1"/><PageHide pagenumber="1"/>'
               '<Text charshape-id="48">hi</Text>')
     assert len(p.runs[0].ctrls) == 2
 
 
+@pytest.mark.sample_free
 def test_no_pagehide_means_no_ctrls():
     p = _para('<Text charshape-id="48">hi</Text>')
     assert p.runs[0].ctrls == []
 
 
+@pytest.mark.sample_free
 def test_pagehide_marks_paragraph_markpen_unsafe():
     p = _para('<PageHide pagenumber="1"/><Text charshape-id="48">hi</Text>')
     assert p.markpen_unsafe is True
 
 
+@pytest.mark.sample_free
 def test_mapper_maps_ctrls():
     from hwp2hwpx.hwpmodel.model import HwpRun, HwpPageHide, HwpParagraph
     hpar = HwpParagraph(para_shape_id=0,
@@ -62,6 +68,7 @@ def test_sample3_has_two_pagehides_attached():
     assert sum(walk(doc.sections[0].paragraphs)) == 2
 
 
+@pytest.mark.sample_free
 def test_pagehide_with_no_text_becomes_ctrl_only_run():
     # A PageHide in an otherwise-empty paragraph (PageHide then paragraph break,
     # no text): the extended control triggers the break's empty <hp:t/> anchor,

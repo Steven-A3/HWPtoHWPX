@@ -1,5 +1,7 @@
 import zipfile
 
+import pytest
+
 from hwp2hwpx.hwpmodel.bindata import (
     _preview_png_or_none,
     extract_preview_image,
@@ -10,19 +12,23 @@ from tests.samplepaths import hwp as _hwp
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 
 
+@pytest.mark.sample_free
 def test_sniff_accepts_png():
     data = PNG_SIG + b"payload"
     assert _preview_png_or_none(data) == data
 
 
+@pytest.mark.sample_free
 def test_sniff_rejects_gif():
     assert _preview_png_or_none(b"GIF89a....") is None
 
 
+@pytest.mark.sample_free
 def test_sniff_rejects_bmp():
     assert _preview_png_or_none(b"BM\x00\x00....") is None
 
 
+@pytest.mark.sample_free
 def test_sniff_rejects_empty():
     assert _preview_png_or_none(b"") is None
 

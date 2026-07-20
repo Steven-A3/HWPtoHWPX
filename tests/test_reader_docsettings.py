@@ -1,3 +1,5 @@
+import pytest
+
 from hwp2hwpx.hwpmodel.reader import read_docinfo
 
 from tests.samplepaths import fixture3
@@ -22,6 +24,7 @@ def test_compat_parsed():
     assert c is not None and c.target == 0
 
 
+@pytest.mark.sample_free
 def test_doc_properties_distinct_values_no_field_swap():
     # fixture is all 1s, so it can't catch a swapped math->equation / picture->pic
     # mapping. Parse a synthetic record with distinct startnums to pin the mapping.

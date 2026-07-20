@@ -1,3 +1,4 @@
+import pytest
 from lxml import etree
 from hwp2hwpx.constants import NS
 from hwp2hwpx.hwpmodel.reader import read_docinfo, hwp5_xml
@@ -15,12 +16,14 @@ def test_reader_sets_subscript_from_flag_bit16():
     assert di.char_shapes[0].subscript is False
 
 
+@pytest.mark.sample_free
 def test_mapper_passes_subscript_through():
     cps = map_char_shapes([HwpCharShape(index=0, base_size=1000, subscript=True),
                            HwpCharShape(index=1, base_size=1000)])
     assert cps[0].subscript is True and cps[1].subscript is False
 
 
+@pytest.mark.sample_free
 def test_writer_emits_subscript_as_last_child():
     header = Header(char_prs=[CharPr(id=0, subscript=True)])
     xml = header_xml(header)
@@ -31,6 +34,7 @@ def test_writer_emits_subscript_as_last_child():
     assert ce.find("{%s}subscript" % NS["hh"]) is not None
 
 
+@pytest.mark.sample_free
 def test_writer_no_subscript_when_false():
     header = Header(char_prs=[CharPr(id=0, subscript=False)])
     xml = header_xml(header)

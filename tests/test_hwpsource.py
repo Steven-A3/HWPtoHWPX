@@ -111,6 +111,7 @@ def test_as_source_passthrough():
     assert isinstance(_as_source(_hwp("3.")), HwpSource)
 
 
+@pytest.mark.sample_free
 def test_summary_tolerates_absent_ole_properties():
     # HwpSummaryInfo exposes its fields as properties over an OLE property set:
     # an absent property raises KeyError from inside the getter, and a missing
@@ -135,6 +136,7 @@ def test_summary_tolerates_absent_ole_properties():
     assert summary["keyword"] == ""
 
 
+@pytest.mark.sample_free
 def test_summary_tolerates_missing_summary_info_stream():
     # A document lacking the \x05HwpSummaryInformation stream entirely raises
     # out of the `summaryinfo` cached_property itself -- before any `_field`
@@ -154,6 +156,7 @@ def test_summary_tolerates_missing_summary_info_stream():
     }
 
 
+@pytest.mark.sample_free
 def test_summary_coerces_non_string_field():
     # A vendor-authored file can put a non-string value (e.g. an int) in a
     # text-typed slot like keywords; _strip used to assume str and raise.
@@ -176,6 +179,7 @@ def test_summary_coerces_non_string_field():
     assert src.summary()["keyword"] == "123"
 
 
+@pytest.mark.sample_free
 def test_section_names_filters_and_orders_numerically():
     # No sample has more than one section, so this can only be exercised with
     # a stub: OLE directory order need not match numeric order, and BodyText
@@ -189,6 +193,7 @@ def test_section_names_filters_and_orders_numerically():
     assert src.section_names() == ["Section0", "Section2", "Section10"]
 
 
+@pytest.mark.sample_free
 def test_section_names_memoized():
     calls = {"n": 0}
 

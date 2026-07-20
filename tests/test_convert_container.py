@@ -1,3 +1,4 @@
+import pytest
 from lxml import etree
 from hwp2hwpx.hwpmodel.reader import _parse_drawing, hwp5_xml
 from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
@@ -140,6 +141,7 @@ _CON_WITH_LINE_CHILD_XML = '''
 </GShapeObjectControl>'''
 
 
+@pytest.mark.sample_free
 def test_nested_line_child_dropped_not_crashed():
     from hwp2hwpx.owpml.section_writer import _write_run
     from hwp2hwpx.owpml.model import Run
