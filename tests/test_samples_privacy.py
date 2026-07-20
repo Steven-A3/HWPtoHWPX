@@ -7,14 +7,52 @@ import pytest
 # samples/ is private and git-ignored, so no committed file may name a sample.
 # Match a samples/ path written as a quoted string literal, rather than any
 # bare mention of the word "samples/" (which also appears in ordinary prose,
-# e.g. doc comments describing where a derived artifact lives). Requiring a
-# quote immediately before "samples/" and another right after the extension
-# means the body between them can allow whitespace -- half of the real
-# sample filenames contain a space (e.g. "20131106 ETRI ...") -- while still
-# stopping at the string's own boundary. '*' stays excluded from the body so
-# a prefix glob like "samples/%s*.hwp" % prefix is not mistaken for a literal
-# filename: every legitimate glob reference contains one.
-_LITERAL_SAMPLE = re.compile(r"""['"]samples/[^'"*]*\.hwpx?(?=['"])""")
+# e.g. doc comments describing where a derived artifact lives). '*' stays
+# excluded from the body so a prefix glob like "samples/%s*.hwp" % prefix is
+# not mistaken for a literal filename: every legitimate glob reference
+# contains one. Whitespace is allowed in the body -- half of the real sample
+# filenames contain a space (e.g. "20131106 ETRI ...").
+#
+# I1 hardening: the previous version anchored "samples/" *immediately* after
+# the opening quote and required the extension immediately before the
+# closing quote. Both anchors were too tight and let realistic spellings
+# through untouched: "./samples/x.hwp", "../samples/x.hwp", an absolute path
+# ending ".../samples/x.hwp", a backslash separator, and an uppercase
+# extension all passed `_names_a_sample` unflagged (verified by calling it
+# directly). This version:
+#   - captures the "samples/..." path in a named group, not the whole quoted
+#     literal, so a leading "./", "../", or absolute-path prefix in front of
+#     it doesn't change what gets compared against the public-fixture
+#     exemption below;
+#   - allows an arbitrary prefix before "samples" (any char except the
+#     enclosing quote or '*'), covering "./", "../", and absolute paths in
+#     one shot, but requires the character immediately before "samples" to
+#     be the opening quote or a path separator (the lookbehind) so an
+#     unrelated word like "not_samples/x.hwp" isn't mistaken for the
+#     "samples/" directory;
+#   - accepts '/' or '\' as the separator, both before and after "samples",
+#     so a backslash-separated path is caught too;
+#   - matches the extension case-insensitively, so "X.HWP" is caught.
+#
+# Known, deliberate gaps (not achievable here without unacceptable false
+# positives -- do not assume these are covered):
+#   - `os.path.join("samples", "x.hwp")`: the directory and filename are two
+#     separate string literals: nothing joins them at the text level, and
+#     matching "samples" and an *.hwp(x) literal independently would flag
+#     ordinary code (e.g. `os.path.join(out_dir, "x.hwp")` next to an
+#     unrelated `"samples"` literal elsewhere in the same file).
+#   - a bare basename with no directory, e.g. `"x.hwpx"`: closing this would
+#     flag every *.hwp/*.hwpx string literal in the suite, the overwhelming
+#     majority of which are synthetic temp-file names
+#     (`tempfile.mktemp(suffix=".hwpx")` targets, `"out.hwpx"`, etc.), not
+#     samples/ references at all.
+#   - `"samples/x.hwp.bak"`: the extension check requires the literal to end
+#     at ".hwp"/".hwpx" or hit a non-word character there; a suffix tacked on
+#     after a *word* character (rare in practice) would still slip through.
+_LITERAL_SAMPLE = re.compile(
+    r"""['"][^'"*]*(?<=['"/\\])(?P<path>samples[/\\][^'"*]*\.hwpx?)(?=['"])""",
+    re.IGNORECASE,
+)
 
 # samples/test_document.hwp(x) is the one sample this project commits (task 2):
 # a document authored for this project with no confidential content. tests/
@@ -27,7 +65,7 @@ def _repo_root():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _git_ls_files(pattern):
+def _git_ls_files(*patterns):
     # test_fresh_clone.py exercises the suite from a plain directory copy
     # (deliberately excluding .git, for speed and to avoid nesting a repo),
     # so `git ls-files` has nothing to query there. Skip only that specific,
@@ -39,18 +77,55 @@ def _git_ls_files(pattern):
     # repository, and a silently-disabled gate is worse than a noisy one.
     if not os.path.isdir(os.path.join(_repo_root(), ".git")):
         pytest.skip("not running inside a git checkout: no .git directory")
-    result = subprocess.run(["git", "ls-files", pattern],
+    # No patterns -> `git ls-files` lists every tracked file (used by I2's
+    # widened scan); one or more patterns filter it, same as before.
+    result = subprocess.run(["git", "ls-files", *patterns],
                             capture_output=True, text=True, check=True)
     return [p for p in result.stdout.splitlines() if p]
 
 
-def _tracked_python_files():
-    paths = _git_ls_files("*.py")
-    # This module's own synthetic examples of the dangerous pattern (used to
-    # prove the gate actually catches it) match _LITERAL_SAMPLE by design but
-    # are not real sample names -- exclude this file from the scan it runs,
-    # or it would flag itself.
-    return [p for p in paths if os.path.basename(p) != "test_samples_privacy.py"]
+# I2: the only tracked files that are actually binary. Decoding them as text
+# would raise; their being tracked at all (and being exactly these two) is
+# independently enforced by test_public_fixture_is_tracked and I3's
+# test_only_the_public_fixture_is_tracked_as_hwp below.
+_BINARY_EXTENSIONS = (".hwp", ".hwpx")
+
+# This module's own repo-relative path -- excluded from the scan it runs.
+_THIS_FILE = "tests/test_samples_privacy.py"
+
+
+def _tracked_text_files():
+    """Every tracked file worth scanning for a leaked private-sample path.
+
+    I2: widened from *.py. README.md, the CI workflow YAML, pyproject.toml,
+    or any future JSON/YAML/TXT fixture could carry a leaked path just as
+    easily as a .py file, and a *.py-only scan would miss all of them.
+
+    Two classes of tracked file are excluded, for different reasons -- both
+    on purpose, not by omission:
+      - docs/**/*.md: historical planning/design documents. They routinely
+        name real sample files by design, as working notes for whoever picks
+        a milestone back up (e.g. "Samples live at samples/3...hwp[x]").
+        That is pre-existing and accepted; churning every historical doc to
+        satisfy this gate is out of scope here.
+      - *.hwp / *.hwpx: binary (OLE2/zip), not text. The only two tracked
+        are the public fixture pair, and that fact is checked separately
+        (below), not by this scan.
+    """
+    paths = _git_ls_files()
+    out = []
+    for p in paths:
+        if p == _THIS_FILE:
+            # M8: excluded by exact repo-relative path, not by basename --
+            # a basename match would exempt any file sharing this name
+            # anywhere else in the tree, not just this one.
+            continue
+        if p.startswith("docs/") and p.endswith(".md"):
+            continue
+        if p.endswith(_BINARY_EXTENSIONS):
+            continue
+        out.append(p)
+    return out
 
 
 def _names_a_sample(line):
@@ -68,13 +143,18 @@ def _names_a_sample(line):
     # finditer, not search: search returns only the *first* literal on the
     # line, so a private path sitting after an exempt public one on the same
     # line -- e.g. a list of both -- would never be inspected at all.
-    return any(m.group(0)[1:] not in _PUBLIC_FIXTURE
+    #
+    # Normalize backslash separators before comparing against the exemption
+    # set, which is spelled with '/': a backslash-separated reference to the
+    # public fixture must still be recognized as exempt, not just a
+    # backslash-separated private path being caught.
+    return any(m.group("path").replace("\\", "/") not in _PUBLIC_FIXTURE
                for m in _LITERAL_SAMPLE.finditer(line))
 
 
 def test_no_committed_file_names_a_sample():
     offenders = []
-    for path in _tracked_python_files():
+    for path in _tracked_text_files():
         with open(path, encoding="utf-8") as handle:
             for lineno, line in enumerate(handle, 1):
                 if _names_a_sample(line):
@@ -141,6 +221,21 @@ def test_public_fixture_is_tracked():
         % tracked)
 
 
+def test_no_hwp_document_is_tracked_outside_the_public_fixture():
+    # I3: test_public_fixture_is_tracked (above) only looks under samples/,
+    # so nothing stops a private document from being tracked somewhere else
+    # entirely -- `git add -f docs/example.hwp` or `tests/data/thing.hwpx`
+    # would be caught by neither that test nor _names_a_sample (which only
+    # matches a quoted "samples/...hwp(x)" *string literal*, not an actual
+    # tracked binary file). Assert directly on the repo-wide set of tracked
+    # *.hwp/*.hwpx files instead of trusting they only ever land in samples/.
+    tracked = sorted(_git_ls_files("*.hwp", "*.hwpx"))
+    assert tracked == ["samples/test_document.hwp",
+                       "samples/test_document.hwpx"], (
+        "only the public fixture may be tracked as *.hwp/*.hwpx anywhere in "
+        "the repo, got: %s" % tracked)
+
+
 def test_no_fixture_derived_from_a_sample_is_tracked():
     # tests/fixtures/ holds dumps (e.g. hwp5proc xml) of private samples --
     # generated on demand by tests/samplepaths.py, not committed. A tracked
@@ -164,3 +259,44 @@ def test_gate_catches_a_private_literal_hiding_behind_the_public_one():
 def test_gate_still_allows_a_line_of_only_public_literals():
     assert not _names_a_sample(
         'PATHS = ["samples/test_document.hwp", "samples/test_document.hwpx"]\n')
+
+
+# I1: path-spelling bypasses. All constructed synthetically -- a real sample
+# filename must never appear in a committed file, including here.
+
+
+def test_gate_catches_a_leading_dot_slash():
+    assert _names_a_sample('X = "./samples/made up name.hwp"\n')
+
+
+def test_gate_catches_a_leading_dot_dot_slash():
+    assert _names_a_sample('X = "../samples/made up name.hwp"\n')
+
+
+def test_gate_catches_an_absolute_path():
+    assert _names_a_sample('X = "/Users/dev/project/samples/made up name.hwp"\n')
+
+
+def test_gate_catches_an_uppercase_extension():
+    assert _names_a_sample('X = "samples/MADE_UP_NAME.HWP"\n')
+
+
+def test_gate_catches_a_backslash_separator():
+    # Raw string: exactly one literal backslash between "samples" and the
+    # filename, as it would appear in a source file's raw bytes.
+    assert _names_a_sample(r'X = "samples\made up name.hwp"' + "\n")
+
+
+def test_gate_still_ignores_the_public_fixture_with_a_leading_dot_slash():
+    # The path-only capture group (not the whole quoted literal) is what's
+    # compared to the exemption set, so a "./" or "../" prefix in front of
+    # the *public* fixture must still be recognized as exempt.
+    assert not _names_a_sample('X = "./samples/test_document.hwp"\n')
+    assert not _names_a_sample('X = "../samples/test_document.hwpx"\n')
+
+
+def test_gate_does_not_flag_an_unrelated_word_ending_in_samples():
+    # The lookbehind requires the character right before "samples" to be a
+    # quote or a path separator, so "not_samples/" isn't mistaken for the
+    # samples/ directory.
+    assert not _names_a_sample('X = "not_samples/made-up-name.hwp"\n')
