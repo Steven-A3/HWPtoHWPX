@@ -146,9 +146,12 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-`hwp5proc` (from pyhwp) must be resolvable on `PATH` — the Reader looks for
-it next to the current Python interpreter first, then falls back to `PATH`.
-The suite currently has around 400 tests, covering the Reader, each Mapper
+`hwp5proc` (from pyhwp) must be resolvable on `PATH` to run the **tests** —
+several of them compare the in-process reader against the `hwp5proc` CLI as an
+independent oracle. Conversion itself never invokes it; the Reader works
+entirely in-process. Tests look for the binary next to the current Python
+interpreter first, then fall back to `PATH`.
+The suite currently has around 560 tests, covering the Reader, each Mapper
 module, the Writer/packaging layer, and fidelity scoring against sample
 document pairs. Sample `.hwp`/Hancom-produced `.hwpx` pairs used as
 ground truth for fidelity tests live under `samples/`, which is git-ignored
