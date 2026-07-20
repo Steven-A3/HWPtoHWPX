@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 import pytest
 
@@ -48,3 +49,24 @@ def test_output_has_the_mode_a_normal_create_would_give_it(tmp_path):
     out = tmp_path / "out.hwpx"
     write_package(GOOD_PARTS, str(out))
     assert os.stat(str(out)).st_mode == os.stat(str(reference)).st_mode
+
+
+def test_temp_file_is_built_in_the_destination_directory(tmp_path, monkeypatch):
+    # The load-bearing property behind atomicity: os.replace is only atomic
+    # within a single filesystem, so the temp file has to live in the same
+    # directory as the destination -- one built elsewhere (e.g. the system
+    # temp dir) could land on a different filesystem and raise EXDEV instead
+    # of replacing in place. Spy on mkstemp rather than inspecting the
+    # finished output, since the temp file is gone (renamed to out_path) by
+    # the time write_package returns successfully.
+    real_mkstemp = tempfile.mkstemp
+    seen_dirs = []
+
+    def spy_mkstemp(*args, **kwargs):
+        seen_dirs.append(kwargs.get("dir"))
+        return real_mkstemp(*args, **kwargs)
+
+    monkeypatch.setattr(tempfile, "mkstemp", spy_mkstemp)
+    out = tmp_path / "out.hwpx"
+    write_package(GOOD_PARTS, str(out))
+    assert seen_dirs == [str(tmp_path)]
