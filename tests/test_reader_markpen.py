@@ -8,15 +8,6 @@ S3 = glob.glob("samples/3.*.hwp")[0]
 S4 = glob.glob("samples/4.*.hwp")[0]
 
 
-def _para_text(p):
-    out = []
-    for r in p.runs:
-        for c in r.contents:
-            if isinstance(c, str):
-                out.append(c)
-    return "".join(out)
-
-
 def test_sample4_yields_five_white_markpen_spans():
     secs = extract_markpens(S4)
     spans = [s for buckets, _ in secs for lst in buckets.values() for s in lst]
@@ -32,12 +23,14 @@ def test_sample3_has_no_markpen():
 def test_attach_lands_on_correct_paragraphs():
     doc = read_document(hwp5_xml(S4))
     attach_range_tags(S4, doc)
-    highlighted = [p for p in _dfs(doc.sections[0].paragraphs) if p.markpens]
-    texts = [_para_text(p) for p in highlighted]
-    assert any(t.startswith("2. 위 사업의 입찰") for t in texts)
-    assert any(t.startswith("3. 또한 계약 체결과 이행") for t in texts)
-    # total attached spans == 5
-    assert sum(len(p.markpens) for p in highlighted) == 5
+    flat = list(_dfs(doc.sections[0].paragraphs))
+    highlighted_idx = [i for i, p in enumerate(flat) if p.markpens]
+    # dfs paragraph indices, not sample text (samples/ is git-ignored and no
+    # document text may be committed) -- pins the same two paragraphs the
+    # original text-prefix assertions targeted, so an off-by-one or wrong-
+    # section indexing bug in attach_range_tags still fails this.
+    assert highlighted_idx == [420, 421]
+    assert sum(len(p.markpens) for p in flat) == 5
 
 
 def test_attach_is_fail_safe_when_binmodel_unavailable(tmp_path):
