@@ -6,9 +6,19 @@ venv/
 *.egg-info/
 dist/
 build/
+.DS_Store
 
-# Private test documents — never publish (government docs)
-samples/
+# Private test documents — never publish (government docs).
+# `samples/*`, not `samples/`: git cannot re-include a file whose parent
+# directory is itself excluded, so the directory form would make the two
+# negations below silently do nothing.
+samples/*
+# ...except the one public document: authored in Hancom Office for this
+# project, contains no confidential content, and is the only sample CI can
+# see. Listed by exact path, never by pattern, so no private document can
+# ever be un-ignored by accident.
+!samples/test_document.hwp
+!samples/test_document.hwpx
 
 # Fixtures derived from private samples (e.g. hwp5proc xml dumps) — generated
 # on demand by tests/samplepaths.py, must never be committed.

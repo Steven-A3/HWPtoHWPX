@@ -579,7 +579,7 @@ from lxml import etree
 from hwp2hwpx.convert import convert
 from hwp2hwpx.constants import NS
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = "samples/3.*.hwp"
 
 
 def _hh(t):
@@ -637,8 +637,8 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 import tempfile, os
 out=os.path.join(tempfile.mkdtemp(),'o.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
-print(report(out, 'samples/3.과업지시서_070.hwpx'))
+convert('samples/3.*.hwp', out)
+print(report(out, 'samples/3.*.hwpx'))
 "
 ```
 Expected: `header.xml` match materially higher than the ~19% baseline; `margin`/`lineSpacing`/`switch` no longer dominate the miss list. Record the new numbers in the commit message.
@@ -649,7 +649,7 @@ Expected: `header.xml` match materially higher than the ~19% baseline; `margin`/
 
 Run:
 ```bash
-.venv/bin/hwp2hwpx "samples/4.제안요청서_070.hwp" -o /tmp/parapr_out.hwpx && .venv/bin/python -c "import zipfile; z=zipfile.ZipFile('/tmp/parapr_out.hwpx'); h=z.read('Contents/header.xml'); print('paraPr switch count:', h.count(b'<hp:switch'), '| tabProperties:', b'tabProperties' in h)"
+.venv/bin/hwp2hwpx "samples/4.*.hwp" -o /tmp/parapr_out.hwpx && .venv/bin/python -c "import zipfile; z=zipfile.ZipFile('/tmp/parapr_out.hwpx'); h=z.read('Contents/header.xml'); print('paraPr switch count:', h.count(b'<hp:switch'), '| tabProperties:', b'tabProperties' in h)"
 ```
 Expected: non-zero switch count, `tabProperties: True`. If Hancom Office is available, open `/tmp/parapr_out.hwpx` and confirm paragraph indentation/spacing look right and tables still render.
 

@@ -856,7 +856,7 @@ Emit the full Hancom namespace list on `<opf:package>` and the `<opf:meta>` bloc
 
 Namespaces on `<opf:package>` (full set): `ha, hp, hp10, hs, hc, hh, hhs, hm, hpf, dc, opf, ooxmlchart, hwpunitchar, epub, config` (URIs captured in the spec's ground-truth section). Meta block format:
 ```xml
-<opf:meta name="creator" content="text">최병철</opf:meta>
+<opf:meta name="creator" content="text">홍길동</opf:meta>
 <opf:meta name="subject" content="text"/>
 <opf:meta name="description" content="text"/>
 <opf:meta name="lastsaveby" content="text">bkk</opf:meta>
@@ -893,8 +893,8 @@ import glob
 def test_summary_info_parsed():
     from hwp2hwpx.hwpmodel.summary import read_summary_info
     si = read_summary_info(glob.glob("samples/2013*.hwp")[0])
-    assert si.creator == "최병철"
-    assert si.title == "ETRI 미래가치 제고 방안"
+    assert si.creator == "홍길동"  # placeholder; real value redacted post-hoc, see privacy sweep
+    assert si.title == "..."       # placeholder; real value redacted post-hoc, see privacy sweep
     assert si.created_date == "2008-05-01T06:01:38Z"
 ```
 *(If you place `read_summary_info` in `bindata.py` instead of a new `summary.py`, import it from there.)*
@@ -967,7 +967,7 @@ def test_content_hpf_meta_blocks_present():
     t = unzip_parts(ref)["Contents/content.hpf"]
     assert score_part(o, t)["missing"].get("meta", 0) == 0
     xml = o.decode("utf-8")
-    assert '<opf:meta name="creator" content="text">최병철</opf:meta>' in xml
+    assert '<opf:meta name="creator" content="text">홍길동</opf:meta>' in xml
     assert '<opf:meta name="keyword" content="text"/>' in xml
 ```
 

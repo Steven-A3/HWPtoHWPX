@@ -1,8 +1,35 @@
 [project]
 name = "hwp2hwpx"
 version = "0.1.0"
+description = "Convert Hangul Word Processor (HWP 5.0) documents to HWPX (OWPML)"
+readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["lxml>=5", "pyhwp>=0.1b15", "six"]  # six: pyhwp's undeclared runtime dep (hwp5proc)
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "Byeong Kwon Kwak", email = "bk.kwak@gmail.com" }]
+keywords = ["hwp", "hwpx", "owpml", "hancom", "document-conversion", "korean"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Topic :: Text Processing :: Markup :: XML",
+]
+# six: pyhwp imports it from hwp5.dataio and hwp5.binmodel.* -- the in-process
+# read path -- but does not declare it (its metadata requires only cryptography,
+# lxml and olefile).
+dependencies = ["lxml>=5", "pyhwp>=0.1b15", "six"]
+
+[project.urls]
+Homepage = "https://github.com/Steven-A3/HWPtoHWPX"
+Repository = "https://github.com/Steven-A3/HWPtoHWPX"
+Issues = "https://github.com/Steven-A3/HWPtoHWPX/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
@@ -17,5 +44,11 @@ testpaths = ["tests"]
 include = ["hwp2hwpx*"]
 
 [build-system]
-requires = ["setuptools>=68"]
+# PEP 639 `license = "..."` + `license-files` (used above) require
+# setuptools >= 77; 68.2.2 fails with "project.license must be valid
+# exactly by one definition" under --no-build-isolation, where the newest
+# setuptools isn't fetched for you. CI passes on a lower floor only because
+# build isolation silently pulls a newer setuptools regardless of what's
+# declared here.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"

@@ -17,11 +17,33 @@ def _umask_file_mode():
     return 0o666 & ~umask
 
 
+def _fixed_zipinfo(name):
+    # zipfile.writestr(name, data), given a plain str, stamps the entry with
+    # time.localtime() at the DOS format's 2-second granularity -- so two
+    # conversions of the same input straddling a 2-second boundary produce
+    # different bytes. That makes "the same input yields the same output"
+    # (test_conversion_is_deterministic) genuinely flaky rather than merely
+    # slow, and CI runs the public fixture twice per matrix job. Every entry
+    # gets the same fixed date_time as the "mimetype" entry below, so output
+    # is reproducible regardless of wall-clock time.
+    #
+    # compress_type is set explicitly to ZIP_DEFLATED: ZipInfo defaults to
+    # ZIP_STORED (0), unlike ZipFile.writestr(str, data), which inherits the
+    # ZipFile's own `compression` argument (ZIP_DEFLATED here) when given a
+    # plain name instead of a ZipInfo. Passing a bare ZipInfo without this
+    # would silently switch every part from compressed to stored.
+    zinfo = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+    zinfo.compress_type = zipfile.ZIP_DEFLATED
+    return zinfo
+
+
 def write_package(parts, out_path):
     """Write `parts` (name->bytes) to a .hwpx ZIP.
 
     The `mimetype` entry is always written first and STORED (uncompressed),
     as Hancom requires. A caller-supplied "mimetype" value overrides the default.
+    Every entry (mimetype included) is stamped with a fixed date_time so the
+    output is byte-for-byte reproducible across runs -- see _fixed_zipinfo.
 
     The package is built at a temporary path in the destination directory and
     moved into place with os.replace, which is atomic within a filesystem. An
@@ -37,12 +59,12 @@ def write_package(parts, out_path):
     os.close(fd)
     try:
         with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as z:
-            z.writestr(zipfile.ZipInfo("mimetype"), mimetype,
+            z.writestr(_fixed_zipinfo("mimetype"), mimetype,
                        compress_type=zipfile.ZIP_STORED)
             for name, data in parts.items():
                 if name == "mimetype":
                     continue
-                z.writestr(name, data)
+                z.writestr(_fixed_zipinfo(name), data)
         os.chmod(tmp_path, _umask_file_mode())
         os.replace(tmp_path, out_path)
     except BaseException:

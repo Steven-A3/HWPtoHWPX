@@ -1,11 +1,11 @@
-import glob
 from hwp2hwpx.hwpmodel import rangetags
 from hwp2hwpx.hwpmodel.model import HwpRangeTag
 from hwp2hwpx.hwpmodel.reader import read_document, hwp5_xml
 from hwp2hwpx.hwpmodel.rangetags import extract_markpens, attach_range_tags
+from tests.samplepaths import hwp as _hwp
 
-S3 = glob.glob("samples/3.*.hwp")[0]
-S4 = glob.glob("samples/4.*.hwp")[0]
+S3 = _hwp("3.")
+S4 = _hwp("4.")
 
 
 def test_sample4_yields_five_white_markpen_spans():

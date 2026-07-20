@@ -1,8 +1,10 @@
-import glob
+import pytest
+
+from tests.samplepaths import hwp as _hwp
 
 from hwp2hwpx.hwpmodel.reader import hwp5_char_shapes, _item_width, _resolve_item_char_shapes
 
-S2013 = glob.glob("samples/2013*.hwp")[0]
+S2013 = _hwp("2013")
 
 
 def test_char_shapes_first_para_is_secpr_shape():
@@ -20,6 +22,7 @@ def test_char_shapes_table_para_192_positions():
     assert [(0, 46), (8, 141)] in arrs
 
 
+@pytest.mark.sample_free
 def test_item_widths():
     assert _item_width("Text", "abc") == 3
     assert _item_width("Text", " ") == 2        # BMP PUA + space
@@ -29,6 +32,7 @@ def test_item_widths():
     assert _item_width("GShapeObjectControl", None) == 8
 
 
+@pytest.mark.sample_free
 def test_resolver_assigns_object_char_shape_from_array():
     # table (pos 0) then paragraph-break (pos 8): table -> 46, break -> 141
     items = [("TableControl", None, None), ("ControlChar", None, "141")]
@@ -56,7 +60,7 @@ def test_resolver_consistency_across_samples():
 
     expected = {"3.": 0, "4.": 0, "2013": 7}
     for pre, exp in expected.items():
-        hwp = glob.glob("samples/" + pre + "*.hwp")[0]
+        hwp = _hwp(pre)
         root = etree.fromstring(hwp5_xml(hwp))
         all_paras = root.findall(".//Paragraph")
         arrs = hwp5_char_shapes(hwp)
@@ -90,7 +94,7 @@ def test_full_document_correlation_map_and_mismatch():
 
     expected = {"3.": 0, "4.": 0, "2013": 7}
     for pre, exp in expected.items():
-        hwp = glob.glob("samples/" + pre + "*.hwp")[0]
+        hwp = _hwp(pre)
         root = etree.fromstring(hwp5_xml(hwp))
         cs_map = _build_char_shape_map(root, hwp5_char_shapes(hwp))
         all_paras = root.findall(".//Paragraph")

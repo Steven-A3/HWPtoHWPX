@@ -16,7 +16,7 @@
 - **Values HWP carries are mapped from HWP; Hancom-injected constants** (`tabStopVal="4000"`, `tabStopUnit="HWPUNIT"`, `id=""`, `memoShapeIDRef="0"`, `textVerticalWidthHead="0"`, `masterPageCnt="0"`, `lineNumberShape` all 0, `autoNumFormat type="DIGIT"`/`supscript="0"`, `numbering type="CONTINUOUS"`, `placement beneathText="0"`, `visibility fill="SHOW_ALL"`/`showLineNumber="0"`, `colPr sameGap="0"`) are emitted verbatim and commented as constants.
 - **Control scan is scoped per-section** (a `SectionDef`'s own first paragraph), never a global `.//` document scan.
 - **Missing record → model field `None`/empty → emit nothing** (no crash, no fabricated element).
-- Samples live at `samples/3.과업지시서_070.hwp[x]` and `samples/4.제안요청서_070.hwp[x]` (git-ignored, present locally). Reader unit tests use the in-repo fixture `tests/fixtures/sample3.hwp5.xml`.
+- Samples live at `samples/3.*.hwp[x]` and `samples/4.*.hwp[x]` (git-ignored, present locally). Reader unit tests use the in-repo fixture `tests/fixtures/sample3.hwp5.xml`.
 
 ### Verified enum mappings (source of truth for the mapper)
 
@@ -1210,8 +1210,8 @@ from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 HP = "http://www.hancom.co.kr/hwpml/2011/paragraph"
 
 PAIRS = [
-    ("samples/3.과업지시서_070.hwp", "samples/3.과업지시서_070.hwpx"),
-    ("samples/4.제안요청서_070.hwp", "samples/4.제안요청서_070.hwpx"),
+    ("samples/3.*.hwp", "samples/3.*.hwpx"),
+    ("samples/4.*.hwp", "samples/4.*.hwpx"),
 ]
 
 

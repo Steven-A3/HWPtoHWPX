@@ -1,8 +1,9 @@
 """Numbering subsystem: the IdMappings/Numbering record becomes an
 <hh:numberings> block in refList (between tabProperties and bullets/
 paraProperties). Source has up to 7 levels; OWPML pads to 10 paraHeads."""
-import glob
 import re
+
+import pytest
 
 from hwp2hwpx.hwpmodel.model import HwpNumbering, HwpNumberingLevel
 from hwp2hwpx.hwpmodel.reader import _parse_numberings, read_docinfo, hwp5_xml
@@ -11,13 +12,14 @@ from hwp2hwpx.mapper.numbering import map_numberings, _num_format
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S2013 = glob.glob("samples/2013*.hwp")[0]
-S2013_REF = glob.glob("samples/2013*.hwpx")[0]
-S3 = glob.glob("samples/3.*.hwp")[0]
-S3_REF = glob.glob("samples/3.*.hwpx")[0]
-S4 = glob.glob("samples/4.*.hwp")[0]
-S4_REF = glob.glob("samples/4.*.hwpx")[0]
+S2013 = _hwp("2013")
+S2013_REF = _hwpx("2013")
+S3 = _hwp("3.")
+S3_REF = _hwpx("3.")
+S4 = _hwp("4.")
+S4_REF = _hwpx("4.")
 
 from lxml import etree
 
@@ -28,6 +30,7 @@ def _id_mappings(inner):
 
 # ---- reader ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_reader_parses_numbering_levels():
     idm = _id_mappings(
         '<Numbering starting-number="0"><Array name="levels">'
@@ -47,6 +50,7 @@ def test_reader_parses_numbering_levels():
         width_adjust=0, char_shape_id=-1, flags=0x0C, text="^1.")
 
 
+@pytest.mark.sample_free
 def test_reader_no_numbering_yields_empty():
     assert _parse_numberings(_id_mappings("")) == []
 
@@ -65,6 +69,7 @@ def test_samples_3_4_have_no_numbering():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_num_format_decode_verified_values():
     # (flags >> 5) & 0x1F, verified against the sample.
     assert _num_format(0x0C) == "DIGIT"
@@ -72,6 +77,7 @@ def test_num_format_decode_verified_values():
     assert _num_format(0x2C) == "CIRCLED_DIGIT"
 
 
+@pytest.mark.sample_free
 def test_mapper_pads_to_ten_levels_with_defaults():
     src = [HwpNumbering(start=0, levels=[
         HwpNumberingLevel(align="left", auto_width=1, auto_indent=1,

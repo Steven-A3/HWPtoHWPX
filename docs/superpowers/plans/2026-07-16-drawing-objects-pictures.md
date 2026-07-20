@@ -381,9 +381,9 @@ import zipfile
 from hwp2hwpx.hwpmodel.reader import hwp5_xml, read_document
 from hwp2hwpx.hwpmodel.bindata import extract_bin_items
 
-S4 = "samples/4.제안요청서_070.hwp"
-S4_REF = "samples/4.제안요청서_070.hwpx"
-S3 = "samples/3.과업지시서_070.hwp"
+S4 = "samples/4.*.hwp"
+S4_REF = "samples/4.*.hwpx"
+S3 = "samples/3.*.hwp"
 
 
 def _doc(hwp):
@@ -986,9 +986,9 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
-S4 = "samples/4.제안요청서_070.hwp"
-S4_REF = "samples/4.제안요청서_070.hwpx"
-S3 = "samples/3.과업지시서_070.hwp"
+S4 = "samples/4.*.hwp"
+S4_REF = "samples/4.*.hwpx"
+S3 = "samples/3.*.hwp"
 
 
 def _convert(hwp, tmp_path, name):
@@ -1056,7 +1056,7 @@ Run:
 import zipfile, tempfile, os
 from hwp2hwpx.convert import convert
 out = tempfile.mktemp(suffix='.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
+convert('samples/3.*.hwp', out)
 z = zipfile.ZipFile(out)
 bd = [n for n in z.namelist() if n.startswith('BinData/')]
 hpf = z.read('Contents/content.hpf').decode()

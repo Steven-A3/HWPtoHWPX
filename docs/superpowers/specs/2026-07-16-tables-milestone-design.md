@@ -6,7 +6,7 @@
 
 ## Goal
 
-Convert HWP tables into faithful HWPX tables — recovering document **content** that the milestone-1 converter silently drops. Target documents (Korean government 과업지시서/제안요청서) are table-heavy; ~33 tables and ~350–450 cells per document currently produce no output at all.
+Convert HWP tables into faithful HWPX tables — recovering document **content** that the milestone-1 converter silently drops. Target documents (Korean government solicitation/task-order documents — samples 3 and 4) are table-heavy; ~33 tables and ~350–450 cells per document currently produce no output at all.
 
 Success = the fidelity harness's `tc`/`subList`/`cellAddr`/`cellSpan`/`cellSz` misses (×353–448) and the table-cell `p` misses (a large share of the ×529–566 `p` gap) drop to ~zero, and the output still opens in Hancom Office with visible, populated, correctly-bordered tables.
 

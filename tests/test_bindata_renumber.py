@@ -1,10 +1,10 @@
-import glob
 import re
 import tempfile
 import zipfile
 
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp
 
 
 def _bindata(path):
@@ -12,7 +12,7 @@ def _bindata(path):
 
 
 def test_2013_images_renumbered_document_order():
-    hwp = glob.glob("samples/2013*.hwp")[0]
+    hwp = _hwp("2013")
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     assert _bindata(out) == ["BinData/image1.jpg", "BinData/image2.bmp",
@@ -20,7 +20,7 @@ def test_2013_images_renumbered_document_order():
 
 
 def test_2013_binaryitemidref_matches_names():
-    hwp = glob.glob("samples/2013*.hwp")[0]
+    hwp = _hwp("2013")
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     xml = unzip_parts(out)["Contents/section0.xml"].decode("utf-8")
@@ -29,7 +29,7 @@ def test_2013_binaryitemidref_matches_names():
 
 
 def test_sample4_bindata_unchanged():
-    hwp = glob.glob("samples/4.*.hwp")[0]
+    hwp = _hwp("4.")
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     assert _bindata(out) == ["BinData/image1.bmp", "BinData/image2.bmp",
@@ -40,7 +40,7 @@ def test_2013_jpeg_media_type_matches_hancom_content_hpf():
     """Hancom's content.hpf spells the JPEG media type "image/jpg" (not the
     RFC-correct "image/jpeg") -- matched here for fidelity. Confirmed against
     samples/20131106*.hwpx's own content.hpf, which uses the same spelling."""
-    hwp = glob.glob("samples/2013*.hwp")[0]
+    hwp = _hwp("2013")
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     hpf = unzip_parts(out)["Contents/content.hpf"].decode("utf-8")

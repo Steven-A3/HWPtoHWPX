@@ -146,14 +146,22 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-`hwp5proc` (from pyhwp) must be resolvable on `PATH` — the Reader looks for
-it next to the current Python interpreter first, then falls back to `PATH`.
-The suite currently has around 400 tests, covering the Reader, each Mapper
+`hwp5proc` (from pyhwp) must be resolvable on `PATH` to run the **tests** —
+several of them compare the in-process reader against the `hwp5proc` CLI as an
+independent oracle. Conversion itself never invokes it; the Reader works
+entirely in-process. Tests look for the binary next to the current Python
+interpreter first, then fall back to `PATH`.
+The suite currently has around 560 tests, covering the Reader, each Mapper
 module, the Writer/packaging layer, and fidelity scoring against sample
-document pairs. Sample `.hwp`/Hancom-produced `.hwpx` pairs used as
-ground truth for fidelity tests live under `samples/`, which is git-ignored
-and not included in this repository (they are private test documents, not
-required to run the non-fidelity-comparison parts of the suite).
+document pairs. `.hwp`/Hancom-produced `.hwpx` pairs used as ground truth
+for fidelity tests live under `samples/`. One pair, `samples/test_document.*`,
+is a document authored for this project with no confidential content, and is
+committed to the repository; it backs the public-fixture tests
+(`tests/test_public_fixture.py`) and is the only sample CI can see. The rest
+of `samples/` is a private corpus of real government documents, is
+git-ignored, and is not included in this repository; tests that need it skip
+automatically when it's absent (see `tests/conftest.py`), so it is not
+required to run the non-fidelity-comparison parts of the suite.
 
 ## Fidelity approach and limitations
 
@@ -175,8 +183,13 @@ Known, deliberate non-goals (documented in the project's design notes):
 
 ## License
 
-GPL v3 — see `LICENSE`. This project depends on `pyhwp`, which is licensed
-under the GNU GPL v3, so this project is distributed under the same license.
+AGPL-3.0-or-later. See [LICENSE](LICENSE).
+
+This project reads HWP files with [pyhwp](https://github.com/mete0r/pyhwp),
+which is AGPL-3.0-or-later, and imports it in-process rather than invoking it
+as a separate program. The combined work is therefore distributed under the
+same terms. Note that the AGPL's section 13 obliges you to offer source to
+users who interact with a modified version over a network.
 
 ## Status
 
@@ -186,3 +199,16 @@ bullets/numbering, border/fills, drawing objects (lines, pictures), page and
 section settings, document/package metadata, and highlight ("mark pen")
 formatting. See `docs/` for design notes and implementation plans per
 feature area.
+
+## Releasing
+
+Not yet published to PyPI. When it is, a release is:
+
+```bash
+# 1. bump `version` in pyproject.toml (semantic; 0.x = output format may shift)
+# 2. commit the bump, then:
+git tag v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+python -m build
+python -m twine check dist/*
+python -m twine upload dist/*
+```

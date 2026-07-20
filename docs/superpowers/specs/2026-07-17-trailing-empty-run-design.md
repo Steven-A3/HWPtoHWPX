@@ -28,7 +28,8 @@ The last `ParaCharShape` entry is the paragraph mark's char shape, at the mark
 character position (after all text). When it differs from the preceding
 (last-visible) segment's shape it forms a distinct trailing segment → an **empty**
 run (the mark carries no visible text). This shape equals the `PARAGRAPH_BREAK`
-control char's `charshape-id` in pyhwp's XML dump (verified: para "제안요청서" has
+control char's `charshape-id` in pyhwp's XML dump (verified: a known
+single-word paragraph in sample 4 has
 `<ControlChar name="PARAGRAPH_BREAK" charshape-id="34"/>` and Hancom emits a
 trailing `<hp:run charPrIDRef="34"/>`). So the mark shape is reachable from the
 XML the reader already parses — **no binmodel path required**.
@@ -89,7 +90,7 @@ No model, mapper, or writer change is needed:
 The mapper passes `HwpRun.char_shape_id` straight to `Run.char_pr_id`
 (`charPrIDRef`), and charPr definitions are emitted in document order so the id
 is stable. The trailing run therefore carries the mark shape's id verbatim
-(verified: id 34 on the "제안요청서" paragraph).
+(verified: id 34 on a known single-word paragraph in sample 4).
 
 ## Error handling
 
@@ -113,7 +114,7 @@ is stable. The trailing run therefore carries the mark shape's id verbatim
 - **End-to-end / fidelity:**
   - Sample 4: `section0.xml` `run` count matches Hancom to within the documented
     over-emission (`missing.get("run", 0) == 0`; i.e. no *missing* runs); at
-    least one known paragraph (e.g. the "제안요청서" paragraph) gains its trailing
+    least one known single-word paragraph gains its trailing
     `<hp:run charPrIDRef="34"/>`; `section0.xml` match rises to ≥ 0.996.
   - Sample 3: `section0.xml` `run` miss count is 0; match rises (≥ 0.9937).
 - **Regression:** the markpen-era sample-3 byte-identical guard

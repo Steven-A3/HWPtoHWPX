@@ -1,6 +1,9 @@
+import pytest
+
 from hwp2hwpx.hwpmodel.model import HwpRect, HwpDrawText, HwpShapeComponent, HwpDrawing
 
 
+@pytest.mark.sample_free
 def test_hwp_rect_model_defaults():
     r = HwpRect()
     assert r.line_color == "#000000"
@@ -10,15 +13,16 @@ def test_hwp_rect_model_defaults():
     assert r.text_margin == (0, 0, 0, 0)
 
 
+@pytest.mark.sample_free
 def test_shape_component_has_second_matrix_pair():
     c = HwpShapeComponent()
     assert c.scaler_matrix2 == [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
     assert c.rotator_matrix2 == [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
 
-import glob
 from lxml import etree
 from hwp2hwpx.hwpmodel.reader import _parse_drawing, hwp5_xml
+from tests.samplepaths import hwp as _hwp
 
 
 def _first_rec_gso(root):
@@ -39,7 +43,7 @@ def test_reader_parses_toplevel_rect():
     # $con container's ShapeComponent (not a direct GSO child) -- containers
     # are explicitly out of scope for Task 1 (see task-1-brief.md), so they
     # are not reachable via _first_rec_gso and stay unmapped for now.
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     gso = _first_rec_gso(root)
     d = _parse_drawing(gso)
     assert d is not None
@@ -89,6 +93,7 @@ _REC_WITH_TEXT_XML = """<ShapeComponent chid="$rec" chid0="$rec" angle="0" flip=
 </ShapeComponent>"""
 
 
+@pytest.mark.sample_free
 def test_parse_rect_with_text_and_second_matrix_pair():
     from hwp2hwpx.hwpmodel.reader import _parse_shape_component, _parse_rect
     comp = etree.fromstring(_REC_WITH_TEXT_XML)
@@ -133,6 +138,7 @@ from hwp2hwpx.owpml.model import (
 from hwp2hwpx.mapper.drawing import map_drawing
 
 
+@pytest.mark.sample_free
 def test_mapper_maps_rect_to_owpml_rect():
     d = _rec_drawing_with_text()
     m = map_drawing(d)
@@ -157,7 +163,7 @@ def test_mapper_maps_rect_to_owpml_rect():
 def test_mapper_maps_toplevel_rect_without_text_or_second_matrix():
     """The real 2013 sample's top-level rects: no drawText, no 2nd matrix
     pair, but still carry outline points and GSO placement (sz/pos/outMargin)."""
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     d = _parse_drawing(_first_rec_gso(root))
     m = map_drawing(d)
     assert isinstance(m, Rect)
@@ -179,6 +185,7 @@ def _run_xml(run):
     return etree.tostring(p_el, encoding="unicode")
 
 
+@pytest.mark.sample_free
 def test_writer_emits_rect_with_drawtext():
     rect = map_drawing(_rec_drawing_with_text())
     xml = _run_xml(Run(char_pr_id=0, texts=[rect]))
@@ -199,7 +206,7 @@ def test_writer_emits_rect_with_drawtext():
 def test_writer_emits_toplevel_rect_without_text():
     """Real 2013 sample top-level rect: single matrix pair, no drawText,
     outline points + sz/pos/outMargin, groupLevel="0"."""
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     rect = map_drawing(_parse_drawing(_first_rec_gso(root)))
     xml = _run_xml(Run(char_pr_id=0, texts=[rect]))
     assert "<hp:rect " in xml and 'groupLevel="0"' in xml
@@ -215,6 +222,7 @@ def _identity_matrix():
     return Matrix(e1="1", e2="0", e3="0", e4="0", e5="1", e6="0")
 
 
+@pytest.mark.sample_free
 def test_writer_emits_nested_rect_without_placement():
     """Task 2's nested (container-member) rects won't be wrapped in their own
     GShapeObjectControl, so _map_rect will leave sz/pos/out_margin (as well as
@@ -260,7 +268,7 @@ def test_sample2013_toplevel_rects_no_text(tmp_path):
     from hwp2hwpx.convert import convert
     import zipfile
     out = tmp_path / "s2013.hwpx"
-    convert(glob.glob("samples/2013*.hwp")[0], str(out))
+    convert(_hwp("2013"), str(out))
     with zipfile.ZipFile(str(out)) as z:
         sec = z.read("Contents/section0.xml").decode("utf-8")
     root = etree.fromstring(sec.encode("utf-8"))

@@ -16,7 +16,7 @@
 - **markpen = range tag `kind==2` only.** `data` (bits 0–23) is the color; emit `color = "#%06X" % data`. Ignore all other `kind` values.
 - **Marker placement at a run/item boundary:** `markpenBegin` attaches to the **start of the following** item/run; `markpenEnd` attaches to the **end of the preceding** item/run. At one gap, ends precede begins. (Verified against Hancom's sample-4 export.)
 - **Both OWPML namespaces:** markpen markers are `hp:` (`_hp("markpenBegin")` / `_hp("markpenEnd")`).
-- **Sample paths:** `samples/3.과업지시서_070.hwp` (no markpen — must stay byte-identical) and `samples/4.제안요청서_070.hwp` (5 markpen spans).
+- **Sample paths:** `samples/3.*.hwp` (no markpen — must stay byte-identical) and `samples/4.*.hwp` (5 markpen spans).
 
 ---
 
@@ -148,15 +148,15 @@ def _run_xml(run):
 
 def test_markpen_markers_emit_inside_t_with_tail_text():
     run = Run(char_pr_id=96, texts=[
-        Text("낙찰, "), MarkpenBegin(color="#FFFFFF"),
-        Text("계약체결"), MarkpenEnd(),
+        Text("가나다, "), MarkpenBegin(color="#FFFFFF"),
+        Text("라마바사"), MarkpenEnd(),
     ])
     xml = _run_xml(run)
     assert '<hp:markpenBegin color="#FFFFFF"/>' in xml
     assert '<hp:markpenEnd/>' in xml
     # text before the begin marker stays on hp:t; text after begin is its tail
-    assert "낙찰, <hp:markpenBegin" in xml
-    assert 'color="#FFFFFF"/>계약체결<hp:markpenEnd/>' in xml
+    assert "가나다, <hp:markpenBegin" in xml
+    assert 'color="#FFFFFF"/>라마바사<hp:markpenEnd/>' in xml
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -461,8 +461,10 @@ def test_attach_lands_on_correct_paragraphs():
     attach_range_tags(S4, doc)
     highlighted = [p for p in _dfs(doc.sections[0].paragraphs) if p.markpens]
     texts = [_para_text(p) for p in highlighted]
-    assert any(t.startswith("2. 위 사업의 입찰") for t in texts)
-    assert any(t.startswith("3. 또한 계약 체결과 이행") for t in texts)
+    # the two markpen-bearing paragraphs are numbered items 2 and 3 of the
+    # source list
+    assert any(t.startswith("2.") for t in texts)
+    assert any(t.startswith("3.") for t in texts)
     # total attached spans == 5
     assert sum(len(p.markpens) for p in highlighted) == 5
 
@@ -622,6 +624,7 @@ git commit -m "feat: reader extracts markpen range tags from binmodel, attaches 
 ```python
 # tests/test_convert_markpen.py
 import glob
+import re
 import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
@@ -643,12 +646,14 @@ def test_markpen_markers_leave_section_miss_list(tmp_path):
 
 
 def test_markpen_exact_serialization_of_known_run(tmp_path):
-    # The highlighted run for "계약체결 ... 준공" must serialize exactly as Hancom does.
+    # A specific highlighted run in sample 4 must serialize exactly as
+    # Hancom does: the marker directly wraps the highlighted text with
+    # nothing else in between.
     out = tmp_path / "s4.hwpx"
     convert(S4, str(out))
     xml = unzip_parts(str(out))["Contents/section0.xml"].decode("utf-8")
-    assert ('<hp:markpenBegin color="#FFFFFF"/>계약체결 및 이행 등의 과정(준공'
-            '<hp:markpenEnd/>') in xml
+    assert re.search(
+        r'<hp:markpenBegin color="#FFFFFF"/>[^<]+<hp:markpenEnd/>', xml)
 
 
 def test_section_match_rises_sample4(tmp_path):

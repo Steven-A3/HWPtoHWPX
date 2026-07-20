@@ -22,16 +22,19 @@ def test_converts_into_an_outdir_that_does_not_exist_yet(tmp_path):
     assert len(os.listdir(str(outdir))) == 1
 
 
+@pytest.mark.sample_free
 def test_missing_input_is_a_per_file_failure_not_a_usage_error(tmp_path):
     out = tmp_path / "out.hwpx"
     assert main(["does-not-exist.hwp", "-o", str(out)]) == 1
 
 
+@pytest.mark.sample_free
 def test_failure_message_names_the_input(tmp_path, capsys):
     main(["does-not-exist.hwp", "-o", str(tmp_path / "out.hwpx")])
     assert "does-not-exist.hwp" in capsys.readouterr().err
 
 
+@pytest.mark.sample_free
 def test_quiet_suppresses_the_failure_message_but_not_the_exit_code(tmp_path, capsys):
     rc = main(["-q", "does-not-exist.hwp", "-o", str(tmp_path / "out.hwpx")])
     assert rc == 1
@@ -134,6 +137,7 @@ def test_json_dash_still_writes_to_stdout_without_needing_a_real_path(tmp_path, 
     assert json.loads(capsys.readouterr().out)["counts"]["converted"] == 1
 
 
+@pytest.mark.sample_free
 def test_json_flag_does_not_swallow_a_positional_input(tmp_path):
     # The V3 gate: with an optional-valued --json, argparse binds the first
     # positional to the flag and silently drops it from the run.
@@ -192,6 +196,7 @@ def test_verbose_reports_each_file_and_a_summary(tmp_path, capsys):
     assert "converted 1" in err
 
 
+@pytest.mark.sample_free
 def test_version_prints_and_exits_zero(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
@@ -221,6 +226,7 @@ def test_o_together_with_outdir_is_a_usage_error(tmp_path):
     assert exc.value.code == 2
 
 
+@pytest.mark.sample_free
 def test_version_falls_back_when_the_package_is_not_installed(monkeypatch):
     import importlib.metadata
 

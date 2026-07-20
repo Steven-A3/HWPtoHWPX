@@ -15,7 +15,7 @@
 - **Fidelity scoring is element-count per tag** — each `PageHide` adds one `ctrl` and one `pageHiding`; attribute values are guarded by unit tests.
 - **Attribute map:** `header→hideHeader`, `footer→hideFooter`, `basepage→hideMasterPage`, `pageborder→hideBorder`, `pagefill→hideFill`, `pagenumber→hidePageNum`.
 - **Placement:** `<hp:ctrl>` is a run-level child emitted BEFORE `<hp:t>` (child order `ctrl[, ctrl], t`); `PageHide` attaches to the first content-bearing run built after it.
-- **Samples:** `samples/3.과업지시서_070.hwp` and `samples/4.제안요청서_070.hwp` each have 2 `PageHide`. This milestone CHANGES sample 3's `section0.xml`.
+- **Samples:** `samples/3.*.hwp` and `samples/4.*.hwp` each have 2 `PageHide`. This milestone CHANGES sample 3's `section0.xml`.
 
 ---
 

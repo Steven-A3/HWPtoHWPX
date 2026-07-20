@@ -1,9 +1,10 @@
-import glob, tempfile
+import tempfile
 import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 from tests.fidelity_struct import _para_sig, _top_paras, all_paragraph_divergences
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 from lxml import etree
 
 # Task 3 tightened 2013 downward: table paragraphs now split into an object run
@@ -18,8 +19,8 @@ SAMPLES = {"3.": (0, 0), "4.": (0, 0), "2013": (0, 1)}  # (run_miss, t_miss)
 
 def _top_para_sigs(pre, idx):
     """(our_sig, their_sig) child-kind signatures for top-level paragraph idx."""
-    hwp = glob.glob("samples/" + pre + "*.hwp")[0]
-    ref = glob.glob("samples/" + pre + "*.hwpx")[0]
+    hwp = _hwp(pre)
+    ref = _hwpx(pre)
     out = tempfile.mktemp(suffix=".hwpx"); convert(hwp, out)
     ours = _top_paras(etree.fromstring(unzip_parts(out)["Contents/section0.xml"]))
     theirs = _top_paras(etree.fromstring(unzip_parts(ref)["Contents/section0.xml"]))
@@ -48,8 +49,8 @@ def test_score_floor_baseline():
     """Score-floor gate: section0 per-tag missing must not exceed current
     baseline on any sample. Task 3 tightens 2013's numbers downward."""
     for pre, (run_max, t_max) in SAMPLES.items():
-        hwp = glob.glob("samples/" + pre + "*.hwp")[0]
-        ref = glob.glob("samples/" + pre + "*.hwpx")[0]
+        hwp = _hwp(pre)
+        ref = _hwpx(pre)
         miss = _section_missing(hwp, ref)
         assert miss.get("run", 0) <= run_max, (pre, "run", miss.get("run"))
         assert miss.get("t", 0) <= t_max, (pre, "t", miss.get("t"))
@@ -81,8 +82,8 @@ def test_full_document_structural_regression():
     divergence, and no residual silently changing shape (e.g. resolving then
     reappearing elsewhere)."""
     for pre, expected in EXPECTED_DIVERGENT_INDICES.items():
-        hwp = glob.glob("samples/" + pre + "*.hwp")[0]
-        ref = glob.glob("samples/" + pre + "*.hwpx")[0]
+        hwp = _hwp(pre)
+        ref = _hwpx(pre)
         out = tempfile.mktemp(suffix=".hwpx")
         convert(hwp, out)
         ours = unzip_parts(out)["Contents/section0.xml"]

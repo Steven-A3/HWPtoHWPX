@@ -1,16 +1,12 @@
-import glob
 import subprocess
 
 from lxml import etree
 
 from hwp2hwpx.hwpmodel.source import HwpSource, _as_source
 from hwp2hwpx.hwpmodel.reader import _hwp5proc
+from tests.samplepaths import hwp as _hwp
 
-SAMPLES = ["samples/3.", "samples/4.", "samples/★131008", "samples/20131106"]
-
-
-def _hwp(pre):
-    return glob.glob(pre + "*.hwp")[0]
+SAMPLES = ["3.", "4.", "★131008", "20131106"]
 
 
 def _tree_key(root):
@@ -49,7 +45,7 @@ def test_stream_bytes_equal_cli_cat(pre):
 
 
 def test_stream_bytes_missing_returns_none():
-    assert HwpSource(_hwp("samples/3.")).stream_bytes("BinData/BIN9999.bmp") is None
+    assert HwpSource(_hwp("3.")).stream_bytes("BinData/BIN9999.bmp") is None
 
 
 # `read_summary_info` is itself implemented in terms of HwpSource.summary()
@@ -92,13 +88,13 @@ def test_summary_matches_subprocess(pre):
 
 
 def test_section_models_type_is_class_name():
-    src = HwpSource(_hwp("samples/3."))
+    src = HwpSource(_hwp("3."))
     names = {m["type"].__name__ for m in src.section_models(src.section_names()[0])}
     assert "Paragraph" in names and "ParaCharShape" in names
 
 
 def test_memoized_parse_runs_once(monkeypatch):
-    src = HwpSource(_hwp("samples/3."))
+    src = HwpSource(_hwp("3."))
     calls = {"xml": 0}
     real = src.hwp5file.xmlevents
     def counting(*a, **k):
@@ -110,11 +106,12 @@ def test_memoized_parse_runs_once(monkeypatch):
 
 
 def test_as_source_passthrough():
-    src = HwpSource(_hwp("samples/3."))
+    src = HwpSource(_hwp("3."))
     assert _as_source(src) is src
-    assert isinstance(_as_source(_hwp("samples/3.")), HwpSource)
+    assert isinstance(_as_source(_hwp("3.")), HwpSource)
 
 
+@pytest.mark.sample_free
 def test_summary_tolerates_absent_ole_properties():
     # HwpSummaryInfo exposes its fields as properties over an OLE property set:
     # an absent property raises KeyError from inside the getter, and a missing
@@ -139,6 +136,7 @@ def test_summary_tolerates_absent_ole_properties():
     assert summary["keyword"] == ""
 
 
+@pytest.mark.sample_free
 def test_summary_tolerates_missing_summary_info_stream():
     # A document lacking the \x05HwpSummaryInformation stream entirely raises
     # out of the `summaryinfo` cached_property itself -- before any `_field`
@@ -158,6 +156,7 @@ def test_summary_tolerates_missing_summary_info_stream():
     }
 
 
+@pytest.mark.sample_free
 def test_summary_coerces_non_string_field():
     # A vendor-authored file can put a non-string value (e.g. an int) in a
     # text-typed slot like keywords; _strip used to assume str and raise.
@@ -180,6 +179,7 @@ def test_summary_coerces_non_string_field():
     assert src.summary()["keyword"] == "123"
 
 
+@pytest.mark.sample_free
 def test_section_names_filters_and_orders_numerically():
     # No sample has more than one section, so this can only be exercised with
     # a stub: OLE directory order need not match numeric order, and BodyText
@@ -193,6 +193,7 @@ def test_section_names_filters_and_orders_numerically():
     assert src.section_names() == ["Section0", "Section2", "Section10"]
 
 
+@pytest.mark.sample_free
 def test_section_names_memoized():
     calls = {"n": 0}
 

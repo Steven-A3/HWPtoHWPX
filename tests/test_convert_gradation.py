@@ -1,8 +1,9 @@
 """Gradation fills: a source BorderFill with gradation="1"/FillGradation maps to
 <hc:fillBrush><hc:gradation>...<hc:color/>...</hc:gradation></hc:fillBrush>.
 Scoped to gradation only; the borderFill-id offset (#68) is a known residual."""
-import glob
 import re
+
+import pytest
 from lxml import etree
 
 from hwp2hwpx.hwpmodel.model import HwpBorderFill, HwpGradation
@@ -12,11 +13,12 @@ from hwp2hwpx.mapper.border_fill import map_border_fills, _map_gradation
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S2013 = glob.glob("samples/2013*.hwp")[0]
-S2013_REF = glob.glob("samples/2013*.hwpx")[0]
-S3 = glob.glob("samples/3.*.hwp")[0]
-S4 = glob.glob("samples/4.*.hwp")[0]
+S2013 = _hwp("2013")
+S2013_REF = _hwpx("2013")
+S3 = _hwp("3.")
+S4 = _hwp("4.")
 
 
 def _id_mappings(inner):
@@ -25,6 +27,7 @@ def _id_mappings(inner):
 
 # ---- reader ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_reader_parses_gradation():
     idm = _id_mappings(
         '<BorderFill gradation="1"><FillGradation attribute-name="fill_gradation" '
@@ -38,6 +41,7 @@ def test_reader_parses_gradation():
         colors=["#ffffff", "#bbbbbb"])
 
 
+@pytest.mark.sample_free
 def test_reader_no_gradation_is_none():
     bf = _parse_border_fills(_id_mappings("<BorderFill/>"))[0]
     assert bf.gradation is None
@@ -59,6 +63,7 @@ def test_samples_3_4_have_no_gradation():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_mapper_maps_gradation_type_and_uppercases_colors():
     out = _map_gradation(HwpGradation(type="circular", angle=0, center_x=0,
                                       center_y=0, step=50,
@@ -68,6 +73,7 @@ def test_mapper_maps_gradation_type_and_uppercases_colors():
                             colors=["#0080C0", "#3CBFFF"])
 
 
+@pytest.mark.sample_free
 def test_mapper_linear_maps_to_linear():
     out = _map_gradation(HwpGradation(type="linear", colors=["#ffffff"]))
     assert out.type == "LINEAR"
@@ -107,9 +113,9 @@ def test_sample2013_gradation_and_color_gaps_closed(tmp_path):
 
 
 def test_samples_3_4_header_unaffected(tmp_path):
-    for prefix in ("samples/3.", "samples/4."):
-        hwp = glob.glob(prefix + "*.hwp")[0]
-        ref = glob.glob(prefix + "*.hwpx")[0]
+    for prefix in ("3.", "4."):
+        hwp = _hwp(prefix)
+        ref = _hwpx(prefix)
         out = tmp_path / "o.hwpx"
         convert(hwp, str(out))
         s = score_part(unzip_parts(str(out))["Contents/header.xml"],

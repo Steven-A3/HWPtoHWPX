@@ -16,7 +16,7 @@
 - **typeInfo emitted on every `<hh:font>`** that has a `Panose1` (all do); it is an additive child — the existing font attributes (`id`/`face`/`type`/`isEmbedded`) are unchanged.
 - **tab:** `<hp:tab width="0" leader="0" type="0"/>` as mixed content in `<hp:t>`; only the `tab` control carries attributes (`fwSpace`/`lineBreak` stay empty).
 - **Test runner:** `.venv/bin/python -m pytest` — plain `python` lacks `hwp5proc` (~13 spurious failures). Current suite: 172 passing.
-- **Validate on BOTH samples** (`samples/3.과업지시서_070.hwp` and `samples/4.제안요청서_070.hwp`).
+- **Validate on BOTH samples** (`samples/3.*.hwp` and `samples/4.*.hwp`).
 - **Out of scope:** `substFont`, `subscript`, images/shapes.
 
 ---
@@ -411,7 +411,7 @@ git commit -m "feat: emit hh:typeInfo (font PANOSE) on each font"
 from hwp2hwpx.hwpmodel.reader import read_document
 from hwp2hwpx.hwpmodel.model import HwpControl
 
-SAMPLE2 = "samples/4.제안요청서_070.hwp"
+SAMPLE2 = "samples/4.*.hwp"
 
 
 def _all_controls():
@@ -527,8 +527,8 @@ git commit -m "feat: inline TAB control char -> hp:tab"
 import zipfile
 from hwp2hwpx.convert import convert
 
-SAMPLE1 = "samples/3.과업지시서_070.hwp"
-SAMPLE2 = "samples/4.제안요청서_070.hwp"
+SAMPLE1 = "samples/3.*.hwp"
+SAMPLE2 = "samples/4.*.hwp"
 
 
 def _parts(tmp_path, src):
@@ -577,8 +577,8 @@ Run:
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 import tempfile, os
-for h, x in [('samples/3.과업지시서_070.hwp','samples/3.과업지시서_070.hwpx'),
-             ('samples/4.제안요청서_070.hwp','samples/4.제안요청서_070.hwpx')]:
+for h, x in [('samples/3.*.hwp','samples/3.*.hwpx'),
+             ('samples/4.*.hwp','samples/4.*.hwpx')]:
     out = os.path.join(tempfile.mkdtemp(), 'out.hwpx')
     convert(h, out)
     print(h.split('/')[-1]); print(report(out, x)); print()

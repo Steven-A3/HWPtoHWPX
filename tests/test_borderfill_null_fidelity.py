@@ -1,4 +1,3 @@
-import glob
 import re
 import tempfile
 import os
@@ -8,11 +7,12 @@ from lxml import etree
 
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
 
 def _convert(pre):
-    hwp = glob.glob(pre + "*.hwp")[0]
-    ref = glob.glob(pre + "*.hwpx")[0]
+    hwp = _hwp(pre)
+    ref = _hwpx(pre)
     td = tempfile.mkdtemp()
     out = os.path.join(td, "out.hwpx")
     convert(hwp, out)
@@ -32,7 +32,7 @@ def _section0_refs(parts):
     return re.findall(rb'borderFillIDRef="(\d+)"', parts["Contents/section0.xml"])
 
 
-NO_INSERT = ["samples/3.", "samples/4.", "samples/★131008"]
+NO_INSERT = ["3.", "4.", "★131008"]
 
 
 @pytest.mark.parametrize("pre", NO_INSERT)
@@ -46,7 +46,7 @@ def test_no_insert_docs_match_hancom_section0_refs(pre):
 
 
 def test_2013_inserts_null_and_section0_refs_match_hancom():
-    ours, theirs = _convert("samples/20131106")
+    ours, theirs = _convert("20131106")
     o_bf = _count(ours["Contents/header.xml"], "borderFill")
     t_bf = _count(theirs["Contents/header.xml"], "borderFill")
     assert o_bf == t_bf == 68           # 67 source + 1 prepended null

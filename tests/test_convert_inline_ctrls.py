@@ -1,6 +1,6 @@
 """Inline controls milestone: titleMark (inline, in <hp:t>), bookmark
 (trailing <hp:ctrl> after text), newNum (leading <hp:ctrl> before an object)."""
-import glob
+import pytest
 from lxml import etree
 
 from hwp2hwpx.constants import NS
@@ -14,6 +14,7 @@ from hwp2hwpx.owpml.section_writer import _write_run
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
 
 def _para(inner):
@@ -24,6 +25,7 @@ def _para(inner):
 
 # ---- reader ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_reader_bookmark_trails_preceding_text_run():
     para = _para('<Text charshape-id="5">hi</Text>'
                  '<BookmarkControl chid="bokm">'
@@ -36,6 +38,7 @@ def test_reader_bookmark_trails_preceding_text_run():
     assert p.runs[1].char_shape_id == 6  # text after the bookmark, separate run
 
 
+@pytest.mark.sample_free
 def test_reader_newnum_leads_following_table_run():
     para = _para('<NewNumbering chid="nwno" kind="page" number="1"/>'
                  '<TableControl charshape-id="3">'
@@ -46,6 +49,7 @@ def test_reader_newnum_leads_following_table_run():
     assert p.runs[0].ctrls_after == []
 
 
+@pytest.mark.sample_free
 def test_reader_titlemark_is_inline_content():
     para = _para('<ControlChar char="?" charshape-id="0" code="8" '
                  'kind="INLINE" name="TITLE_MARK"/>'
@@ -55,6 +59,7 @@ def test_reader_titlemark_is_inline_content():
     assert p.markpen_unsafe is False
 
 
+@pytest.mark.sample_free
 def test_reader_newnum_default_and_kind_mapping():
     para = _para('<NewNumbering chid="nwno" kind="table" number="7"/>'
                  '<Text charshape-id="0">x</Text>')
@@ -64,11 +69,13 @@ def test_reader_newnum_default_and_kind_mapping():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_mapper_maps_bookmark_and_newnum():
     out = _map_ctrls([HwpBookmark(name="b"), HwpNewNumbering(num=2, num_type="PAGE")])
     assert out == [Bookmark(name="b"), NewNum(num=2, num_type="PAGE")]
 
 
+@pytest.mark.sample_free
 def test_mapper_passes_ctrls_after_through():
     hpar = HwpParagraph(para_shape_id=0,
                         runs=[HwpRun(char_shape_id=5, contents=["hi"],
@@ -85,6 +92,7 @@ def _run_xml(run):
     return etree.tostring(p_el, encoding="unicode")
 
 
+@pytest.mark.sample_free
 def test_writer_bookmark_after_text():
     from hwp2hwpx.owpml.model import Run
     xml = _run_xml(Run(char_pr_id=5, texts=[Text("hi")],
@@ -92,6 +100,7 @@ def test_writer_bookmark_after_text():
     assert '<hp:t>hi</hp:t><hp:ctrl><hp:bookmark name="bm1"/></hp:ctrl>' in xml
 
 
+@pytest.mark.sample_free
 def test_writer_newnum_before_no_text():
     from hwp2hwpx.owpml.model import Run
     xml = _run_xml(Run(char_pr_id=0, texts=[],
@@ -99,6 +108,7 @@ def test_writer_newnum_before_no_text():
     assert '<hp:ctrl><hp:newNum num="1" numType="PAGE"/></hp:ctrl>' in xml
 
 
+@pytest.mark.sample_free
 def test_writer_titlemark_inline_with_ignore():
     from hwp2hwpx.owpml.model import Run
     xml = _run_xml(Run(char_pr_id=0, texts=[Control("titleMark"), Text("x")]))
@@ -108,8 +118,8 @@ def test_writer_titlemark_inline_with_ignore():
 # ---- end-to-end fidelity --------------------------------------------------
 
 def _score(prefix, tmp_path):
-    hwp = glob.glob(prefix + "*.hwp")[0]
-    ref = glob.glob(prefix + "*.hwpx")[0]
+    hwp = _hwp(prefix)
+    ref = _hwpx(prefix)
     out = tmp_path / "o.hwpx"
     convert(hwp, str(out))
     return score_part(unzip_parts(str(out))["Contents/section0.xml"],
@@ -117,17 +127,17 @@ def _score(prefix, tmp_path):
 
 
 def test_sample3_bookmark_and_newnum_present(tmp_path):
-    s = _score("samples/3.", tmp_path)
+    s = _score("3.", tmp_path)
     assert s["missing"].get("bookmark", 0) == 0
     assert s["missing"].get("newNum", 0) == 0
     assert s["missing"].get("ctrl", 0) == 0
 
 
 def test_sample4_titlemark_present(tmp_path):
-    s = _score("samples/4.", tmp_path)
+    s = _score("4.", tmp_path)
     assert s["missing"].get("titleMark", 0) == 0
 
 
 def test_both_sections_reach_full_match(tmp_path):
-    assert _score("samples/3.", tmp_path)["match"] == 1.0
-    assert _score("samples/4.", tmp_path)["match"] == 1.0
+    assert _score("3.", tmp_path)["match"] == 1.0
+    assert _score("4.", tmp_path)["match"] == 1.0

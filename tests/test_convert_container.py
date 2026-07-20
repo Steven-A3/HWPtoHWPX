@@ -1,6 +1,7 @@
-import glob
+import pytest
 from lxml import etree
 from hwp2hwpx.hwpmodel.reader import _parse_drawing, hwp5_xml
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
 
 def _con_gso(root):
@@ -13,7 +14,7 @@ def _con_gso(root):
 
 
 def test_reader_parses_container_children():
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     d = _parse_drawing(_con_gso(root))
     assert d.kind == "container"
     kinds = sorted(c.kind for c in d.children)
@@ -27,7 +28,7 @@ from hwp2hwpx.mapper.drawing import map_drawing
 
 
 def test_mapper_maps_container_recursively():
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     m = map_drawing(_parse_drawing(_con_gso(root)))
     assert isinstance(m, Container)
     assert m.group_level == 0
@@ -49,8 +50,8 @@ from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
 
 def test_end_to_end_container_and_shapes_present():
-    hwp = glob.glob("samples/2013*.hwp")[0]
-    ref = glob.glob("samples/2013*.hwpx")[0]
+    hwp = _hwp("2013")
+    ref = _hwpx("2013")
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     o = unzip_parts(out)["Contents/section0.xml"]
@@ -69,7 +70,7 @@ def test_end_to_end_container_shape_counts_and_nesting():
     Task 1 + 2 nested), 3 pics total (2 top-level + 1 nested JPEG), 2
     drawTexts (only the nested text rects). The container carries trailing
     sz/pos/outMargin; its nested children (groupLevel=1) do not."""
-    hwp = glob.glob("samples/2013*.hwp")[0]
+    hwp = _hwp("2013")
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     o = unzip_parts(out)["Contents/section0.xml"]
@@ -140,6 +141,7 @@ _CON_WITH_LINE_CHILD_XML = '''
 </GShapeObjectControl>'''
 
 
+@pytest.mark.sample_free
 def test_nested_line_child_dropped_not_crashed():
     from hwp2hwpx.owpml.section_writer import _write_run
     from hwp2hwpx.owpml.model import Run

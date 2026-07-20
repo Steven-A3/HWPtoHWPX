@@ -528,7 +528,7 @@ import zipfile
 import re
 from hwp2hwpx.convert import convert
 
-SAMPLE_HWP = "samples/3.과업지시서_070.hwp"
+SAMPLE_HWP = "samples/3.*.hwp"
 
 
 def _section(tmp_path):
@@ -556,9 +556,11 @@ def test_run_and_t_counts_converge_to_hancom(tmp_path):
 
 def test_previously_dropped_text_present(tmp_path):
     sec = _section(tmp_path)
-    # a fwSpace splits this phrase; both sides must survive
-    assert "납부해야 함" in sec
-    assert "별표2 참조" in sec
+    # a fwSpace splits a body paragraph into two text fragments; both the
+    # fragment before and the fragment after the fwSpace must survive in the
+    # output (previously the text after the fwSpace was silently dropped)
+    assert "(text before fwSpace)" in sec  # placeholder for the real fragment
+    assert "(text after fwSpace)" in sec  # placeholder for the real fragment
 ```
 
 - [ ] **Step 2: Run the test**
@@ -580,8 +582,8 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 import tempfile, os
 out = os.path.join(tempfile.mkdtemp(), 'out.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
-print(report(out, 'samples/3.과업지시서_070.hwpx'))
+convert('samples/3.*.hwp', out)
+print(report(out, 'samples/3.*.hwpx'))
 "
 ```
 Expected: `section0.xml` match materially above 73.1%; `fwSpace`/`lineBreak` gone from the section miss list; run/`hp:t` no longer over-counted. Record the number in the commit message.

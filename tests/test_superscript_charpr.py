@@ -1,6 +1,6 @@
 """Superscript charPr: charshapeflags bit 15 -> <hh:supscript/> (mirror of the
 subscript milestone, which uses bit 16). Emitted before <hh:subscript>."""
-import glob
+import pytest
 from lxml import etree
 
 from hwp2hwpx.constants import NS
@@ -12,9 +12,10 @@ from hwp2hwpx.owpml.header_writer import header_xml
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S2013 = glob.glob("samples/2013*.hwp")[0]
-S2013_REF = glob.glob("samples/2013*.hwpx")[0]
+S2013 = _hwp("2013")
+S2013_REF = _hwpx("2013")
 
 
 # ---- reader ---------------------------------------------------------------
@@ -35,6 +36,7 @@ def test_reader_superscript_and_subscript_independent():
 
 # ---- mapper ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_mapper_passes_superscript_through():
     cps = map_char_shapes([HwpCharShape(index=0, base_size=1000, superscript=True),
                            HwpCharShape(index=1, base_size=1000)])
@@ -43,18 +45,21 @@ def test_mapper_passes_superscript_through():
 
 # ---- writer ---------------------------------------------------------------
 
+@pytest.mark.sample_free
 def test_writer_emits_supscript():
     header = Header(char_prs=[CharPr(id=0, superscript=True)])
     ce = etree.fromstring(header_xml(header)).find(".//{%s}charPr" % NS["hh"])
     assert ce.find("{%s}supscript" % NS["hh"]) is not None
 
 
+@pytest.mark.sample_free
 def test_writer_no_supscript_when_false():
     header = Header(char_prs=[CharPr(id=0, superscript=False)])
     ce = etree.fromstring(header_xml(header)).find(".//{%s}charPr" % NS["hh"])
     assert ce.find("{%s}supscript" % NS["hh"]) is None
 
 
+@pytest.mark.sample_free
 def test_writer_supscript_precedes_subscript():
     # OWPML schema order: supscript before subscript when both are present.
     header = Header(char_prs=[CharPr(id=0, superscript=True, subscript=True)])
@@ -92,7 +97,7 @@ def test_sample2013_supscript_placement_byte_exact(tmp_path):
 
 
 def test_samples_3_4_have_no_superscript(tmp_path):
-    for prefix in ("samples/3.", "samples/4."):
-        hwp = glob.glob(prefix + "*.hwp")[0]
+    for prefix in ("3.", "4."):
+        hwp = _hwp(prefix)
         di = read_docinfo(hwp5_xml(hwp))
         assert all(not cs.superscript for cs in di.char_shapes)
