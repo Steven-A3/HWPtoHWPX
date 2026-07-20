@@ -152,3 +152,19 @@ def test_plan_detects_a_collision_spelled_two_different_ways():
     # on the raw string would miss it and the second job would clobber the first.
     with pytest.raises(UsageError):
         plan_jobs(["/docs/a.hwp", "/docs/./a.hwp"])
+
+
+def test_plan_rejects_an_output_that_is_the_input_itself():
+    # I3: -o pointing at the input (e.g. a "-o doc.hwp" typo for "-o
+    # doc.hwpx") must never reach run_jobs, or --force rewrites the source
+    # document as its own (smaller, lossy) conversion.
+    with pytest.raises(UsageError):
+        plan_jobs(["/docs/a.hwp"], out_file="/docs/a.hwp")
+
+
+def test_plan_rejects_an_outdir_output_that_lands_on_another_input():
+    # /docs/a.hwp's default-named output under --outdir is /out/a.hwpx, which
+    # is itself one of this run's other inputs -- same hazard as -o, reached
+    # via --outdir instead.
+    with pytest.raises(UsageError):
+        plan_jobs(["/docs/a.hwp", "/out/a.hwpx"], outdir="/out")

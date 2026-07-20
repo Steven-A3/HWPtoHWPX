@@ -49,6 +49,7 @@ def plan_jobs(inputs, out_file=None, outdir=None, force=False):
             action = "convert"
         jobs.append(Job(path, output, action))
     _reject_output_collisions(jobs)
+    _reject_output_onto_an_input(jobs)
     return jobs
 
 
@@ -68,6 +69,24 @@ def _reject_output_collisions(jobs):
             raise UsageError(
                 "multiple inputs resolve to the same output {!r}: {}".format(
                     output, ", ".join(inputs)))
+
+
+def _reject_output_onto_an_input(jobs):
+    """Raise if any job's output equals one of this run's own inputs.
+
+    Undetected, --force turns this into the converter overwriting a source
+    document with its own (smaller, lossy) conversion -- e.g. `-o` pointing at
+    the input by typo, or an --outdir landing on a path that is itself one of
+    the other inputs in the same run. Normalized the same way as the sibling
+    collision check above, for the same "d/a.hwp" vs "d/./a.hwp" reason.
+    """
+    input_keys = {os.path.normpath(job.input) for job in jobs}
+    for job in jobs:
+        output_key = os.path.normpath(job.output)
+        if output_key in input_keys:
+            raise UsageError(
+                "output {!r} is one of this run's own inputs".format(
+                    job.output))
 
 
 def run_jobs(jobs, on_result=None):
