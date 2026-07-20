@@ -11,7 +11,7 @@ import pytest
 # excluded from the body so a prefix glob like "samples/%s*.hwp" % prefix is
 # not mistaken for a literal filename: every legitimate glob reference
 # contains one. Whitespace is allowed in the body -- half of the real sample
-# filenames contain a space (e.g. "20131106 ETRI ...").
+# filenames contain a space (e.g. "20131106 made up report name").
 #
 # I1 hardening: the previous version anchored "samples/" *immediately* after
 # the opening quote and required the extension immediately before the
@@ -100,14 +100,12 @@ def _tracked_text_files():
     I2: widened from *.py. README.md, the CI workflow YAML, pyproject.toml,
     or any future JSON/YAML/TXT fixture could carry a leaked path just as
     easily as a .py file, and a *.py-only scan would miss all of them.
+    Historical planning/design docs under docs/**/*.md are in scope too --
+    they were audited and redacted to refer to samples by number/tag only
+    (sample 3, sample 4, sample 2013, ...) rather than by literal filename,
+    so nothing legitimate needs an exclusion here.
 
-    Two classes of tracked file are excluded, for different reasons -- both
-    on purpose, not by omission:
-      - docs/**/*.md: historical planning/design documents. They routinely
-        name real sample files by design, as working notes for whoever picks
-        a milestone back up (e.g. "Samples live at samples/3...hwp[x]").
-        That is pre-existing and accepted; churning every historical doc to
-        satisfy this gate is out of scope here.
+    One class of tracked file is excluded, and only for the reason below:
       - *.hwp / *.hwpx: binary (OLE2/zip), not text. The only two tracked
         are the public fixture pair, and that fact is checked separately
         (below), not by this scan.
@@ -119,8 +117,6 @@ def _tracked_text_files():
             # M8: excluded by exact repo-relative path, not by basename --
             # a basename match would exempt any file sharing this name
             # anywhere else in the tree, not just this one.
-            continue
-        if p.startswith("docs/") and p.endswith(".md"):
             continue
         if p.endswith(_BINARY_EXTENSIONS):
             continue
