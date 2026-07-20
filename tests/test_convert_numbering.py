@@ -1,7 +1,6 @@
 """Numbering subsystem: the IdMappings/Numbering record becomes an
 <hh:numberings> block in refList (between tabProperties and bullets/
 paraProperties). Source has up to 7 levels; OWPML pads to 10 paraHeads."""
-import glob
 import re
 
 from hwp2hwpx.hwpmodel.model import HwpNumbering, HwpNumberingLevel
@@ -11,13 +10,14 @@ from hwp2hwpx.mapper.numbering import map_numberings, _num_format
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S2013 = glob.glob("samples/2013*.hwp")[0]
-S2013_REF = glob.glob("samples/2013*.hwpx")[0]
-S3 = glob.glob("samples/3.*.hwp")[0]
-S3_REF = glob.glob("samples/3.*.hwpx")[0]
-S4 = glob.glob("samples/4.*.hwp")[0]
-S4_REF = glob.glob("samples/4.*.hwpx")[0]
+S2013 = _hwp("2013")
+S2013_REF = _hwpx("2013")
+S3 = _hwp("3.")
+S3_REF = _hwpx("3.")
+S4 = _hwp("4.")
+S4_REF = _hwpx("4.")
 
 from lxml import etree
 

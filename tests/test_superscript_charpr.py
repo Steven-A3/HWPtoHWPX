@@ -1,6 +1,5 @@
 """Superscript charPr: charshapeflags bit 15 -> <hh:supscript/> (mirror of the
 subscript milestone, which uses bit 16). Emitted before <hh:subscript>."""
-import glob
 from lxml import etree
 
 from hwp2hwpx.constants import NS
@@ -12,9 +11,10 @@ from hwp2hwpx.owpml.header_writer import header_xml
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S2013 = glob.glob("samples/2013*.hwp")[0]
-S2013_REF = glob.glob("samples/2013*.hwpx")[0]
+S2013 = _hwp("2013")
+S2013_REF = _hwpx("2013")
 
 
 # ---- reader ---------------------------------------------------------------
@@ -92,7 +92,7 @@ def test_sample2013_supscript_placement_byte_exact(tmp_path):
 
 
 def test_samples_3_4_have_no_superscript(tmp_path):
-    for prefix in ("samples/3.", "samples/4."):
-        hwp = glob.glob(prefix + "*.hwp")[0]
+    for prefix in ("3.", "4."):
+        hwp = _hwp(prefix)
         di = read_docinfo(hwp5_xml(hwp))
         assert all(not cs.superscript for cs in di.char_shapes)

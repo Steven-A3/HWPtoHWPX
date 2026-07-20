@@ -1,16 +1,12 @@
-import glob
 import subprocess
 
 from lxml import etree
 
 from hwp2hwpx.hwpmodel.source import HwpSource, _as_source
 from hwp2hwpx.hwpmodel.reader import _hwp5proc
+from tests.samplepaths import hwp as _hwp
 
-SAMPLES = ["samples/3.", "samples/4.", "samples/★131008", "samples/20131106"]
-
-
-def _hwp(pre):
-    return glob.glob(pre + "*.hwp")[0]
+SAMPLES = ["3.", "4.", "★131008", "20131106"]
 
 
 def _tree_key(root):
@@ -49,7 +45,7 @@ def test_stream_bytes_equal_cli_cat(pre):
 
 
 def test_stream_bytes_missing_returns_none():
-    assert HwpSource(_hwp("samples/3.")).stream_bytes("BinData/BIN9999.bmp") is None
+    assert HwpSource(_hwp("3.")).stream_bytes("BinData/BIN9999.bmp") is None
 
 
 # `read_summary_info` is itself implemented in terms of HwpSource.summary()
@@ -92,13 +88,13 @@ def test_summary_matches_subprocess(pre):
 
 
 def test_section_models_type_is_class_name():
-    src = HwpSource(_hwp("samples/3."))
+    src = HwpSource(_hwp("3."))
     names = {m["type"].__name__ for m in src.section_models(src.section_names()[0])}
     assert "Paragraph" in names and "ParaCharShape" in names
 
 
 def test_memoized_parse_runs_once(monkeypatch):
-    src = HwpSource(_hwp("samples/3."))
+    src = HwpSource(_hwp("3."))
     calls = {"xml": 0}
     real = src.hwp5file.xmlevents
     def counting(*a, **k):
@@ -110,9 +106,9 @@ def test_memoized_parse_runs_once(monkeypatch):
 
 
 def test_as_source_passthrough():
-    src = HwpSource(_hwp("samples/3."))
+    src = HwpSource(_hwp("3."))
     assert _as_source(src) is src
-    assert isinstance(_as_source(_hwp("samples/3.")), HwpSource)
+    assert isinstance(_as_source(_hwp("3.")), HwpSource)
 
 
 def test_summary_tolerates_absent_ole_properties():

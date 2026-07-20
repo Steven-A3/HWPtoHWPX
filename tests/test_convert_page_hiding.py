@@ -1,12 +1,12 @@
-import glob
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
 
 def _score(prefix, tmp_path):
-    hwp = glob.glob(prefix + "*.hwp")[0]
-    ref = glob.glob(prefix + "*.hwpx")[0]
+    hwp = _hwp(prefix)
+    ref = _hwpx(prefix)
     out = tmp_path / "o.hwpx"
     convert(hwp, str(out))
     ours = unzip_parts(str(out))["Contents/section0.xml"]
@@ -15,17 +15,17 @@ def _score(prefix, tmp_path):
 
 
 def test_sample3_pagehiding_present(tmp_path):
-    s = _score("samples/3.", tmp_path)
+    s = _score("3.", tmp_path)
     assert s["missing"].get("pageHiding", 0) == 0
 
 
 def test_sample4_pagehiding_present(tmp_path):
-    s = _score("samples/4.", tmp_path)
+    s = _score("4.", tmp_path)
     assert s["missing"].get("pageHiding", 0) == 0
 
 
 def test_sample4_pagehiding_serialization(tmp_path):
-    hwp = glob.glob("samples/4.*.hwp")[0]
+    hwp = _hwp("4.")
     out = tmp_path / "o.hwpx"
     convert(hwp, str(out))
     xml = unzip_parts(str(out))["Contents/section0.xml"].decode("utf-8")

@@ -1,6 +1,5 @@
 """Inline controls milestone: titleMark (inline, in <hp:t>), bookmark
 (trailing <hp:ctrl> after text), newNum (leading <hp:ctrl> before an object)."""
-import glob
 from lxml import etree
 
 from hwp2hwpx.constants import NS
@@ -14,6 +13,7 @@ from hwp2hwpx.owpml.section_writer import _write_run
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
 
 def _para(inner):
@@ -108,8 +108,8 @@ def test_writer_titlemark_inline_with_ignore():
 # ---- end-to-end fidelity --------------------------------------------------
 
 def _score(prefix, tmp_path):
-    hwp = glob.glob(prefix + "*.hwp")[0]
-    ref = glob.glob(prefix + "*.hwpx")[0]
+    hwp = _hwp(prefix)
+    ref = _hwpx(prefix)
     out = tmp_path / "o.hwpx"
     convert(hwp, str(out))
     return score_part(unzip_parts(str(out))["Contents/section0.xml"],
@@ -117,17 +117,17 @@ def _score(prefix, tmp_path):
 
 
 def test_sample3_bookmark_and_newnum_present(tmp_path):
-    s = _score("samples/3.", tmp_path)
+    s = _score("3.", tmp_path)
     assert s["missing"].get("bookmark", 0) == 0
     assert s["missing"].get("newNum", 0) == 0
     assert s["missing"].get("ctrl", 0) == 0
 
 
 def test_sample4_titlemark_present(tmp_path):
-    s = _score("samples/4.", tmp_path)
+    s = _score("4.", tmp_path)
     assert s["missing"].get("titleMark", 0) == 0
 
 
 def test_both_sections_reach_full_match(tmp_path):
-    assert _score("samples/3.", tmp_path)["match"] == 1.0
-    assert _score("samples/4.", tmp_path)["match"] == 1.0
+    assert _score("3.", tmp_path)["match"] == 1.0
+    assert _score("4.", tmp_path)["match"] == 1.0

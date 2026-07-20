@@ -1,10 +1,12 @@
-import glob, tempfile
+import tempfile
+
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
 
 def _out(n):
-    hwp = glob.glob("samples/%s*.hwp" % n)[0]
+    hwp = _hwp(n)
     out = tempfile.mktemp(suffix=".hwpx")
     convert(hwp, out)
     return unzip_parts(out)
@@ -31,8 +33,8 @@ def test_container_rdf_all_samples():
 
 def test_container_rdf_byte_equals_reference():
     for n in ("3.", "4.", "2013"):
-        hwp = glob.glob("samples/%s*.hwp" % n)[0]
-        ref = glob.glob("samples/%s*.hwpx" % n)[0]
+        hwp = _hwp(n)
+        ref = _hwpx(n)
         out = tempfile.mktemp(suffix=".hwpx")
         convert(hwp, out)
         got = unzip_parts(out)["META-INF/container.rdf"]
@@ -42,8 +44,8 @@ def test_container_rdf_byte_equals_reference():
 
 def test_container_xml_byte_equals_reference():
     for n in ("3.", "4.", "2013"):
-        hwp = glob.glob("samples/%s*.hwp" % n)[0]
-        ref = glob.glob("samples/%s*.hwpx" % n)[0]
+        hwp = _hwp(n)
+        ref = _hwpx(n)
         out = tempfile.mktemp(suffix=".hwpx")
         convert(hwp, out)
         got = unzip_parts(out)["META-INF/container.xml"]

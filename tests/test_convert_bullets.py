@@ -1,6 +1,5 @@
 """Bullets milestone: the IdMappings/Bullet record becomes an <hh:bullets>
 block in refList, between <hh:tabProperties> and <hh:paraProperties>."""
-import glob
 import re
 from lxml import etree
 
@@ -11,11 +10,12 @@ from hwp2hwpx.mapper.bullet import map_bullets
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S3 = glob.glob("samples/3.*.hwp")[0]
-S3_REF = glob.glob("samples/3.*.hwpx")[0]
-S4 = glob.glob("samples/4.*.hwp")[0]
-S4_REF = glob.glob("samples/4.*.hwpx")[0]
+S3 = _hwp("3.")
+S3_REF = _hwpx("3.")
+S4 = _hwp("4.")
+S4_REF = _hwpx("4.")
 
 # The exact block Hancom writes for sample 3's single bullet definition.
 HANCOM_BULLETS = (

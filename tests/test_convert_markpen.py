@@ -1,13 +1,13 @@
-import glob
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 from hwp2hwpx.hwpmodel.reader import read_document, hwp5_xml
 from hwp2hwpx.hwpmodel.rangetags import attach_range_tags
+from tests.samplepaths import hwp as _hwp, hwpx as _hwpx
 
-S3 = glob.glob("samples/3.*.hwp")[0]
-S4 = glob.glob("samples/4.*.hwp")[0]
-S4_REF = glob.glob("samples/4.*.hwpx")[0]
+S3 = _hwp("3.")
+S4 = _hwp("4.")
+S4_REF = _hwpx("4.")
 
 
 def _dfs(paras):

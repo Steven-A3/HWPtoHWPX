@@ -1,4 +1,3 @@
-import glob
 from lxml import etree
 from hwp2hwpx.constants import NS
 from hwp2hwpx.hwpmodel.reader import read_docinfo, hwp5_xml
@@ -6,10 +5,11 @@ from hwp2hwpx.hwpmodel.model import HwpCharShape
 from hwp2hwpx.owpml.model import CharPr, Header
 from hwp2hwpx.mapper.char_pr import map_char_shapes
 from hwp2hwpx.owpml.header_writer import header_xml
+from tests.samplepaths import hwp as _hwp
 
 
 def test_reader_sets_subscript_from_flag_bit16():
-    di = read_docinfo(hwp5_xml(glob.glob("samples/3.*.hwp")[0]))
+    di = read_docinfo(hwp5_xml(_hwp("3.")))
     assert di.char_shapes[58].subscript is True
     assert di.char_shapes[59].subscript is True
     assert di.char_shapes[0].subscript is False

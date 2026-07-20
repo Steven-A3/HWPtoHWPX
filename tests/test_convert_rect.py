@@ -16,9 +16,9 @@ def test_shape_component_has_second_matrix_pair():
     assert c.rotator_matrix2 == [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
 
-import glob
 from lxml import etree
 from hwp2hwpx.hwpmodel.reader import _parse_drawing, hwp5_xml
+from tests.samplepaths import hwp as _hwp
 
 
 def _first_rec_gso(root):
@@ -39,7 +39,7 @@ def test_reader_parses_toplevel_rect():
     # $con container's ShapeComponent (not a direct GSO child) -- containers
     # are explicitly out of scope for Task 1 (see task-1-brief.md), so they
     # are not reachable via _first_rec_gso and stay unmapped for now.
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     gso = _first_rec_gso(root)
     d = _parse_drawing(gso)
     assert d is not None
@@ -157,7 +157,7 @@ def test_mapper_maps_rect_to_owpml_rect():
 def test_mapper_maps_toplevel_rect_without_text_or_second_matrix():
     """The real 2013 sample's top-level rects: no drawText, no 2nd matrix
     pair, but still carry outline points and GSO placement (sz/pos/outMargin)."""
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     d = _parse_drawing(_first_rec_gso(root))
     m = map_drawing(d)
     assert isinstance(m, Rect)
@@ -199,7 +199,7 @@ def test_writer_emits_rect_with_drawtext():
 def test_writer_emits_toplevel_rect_without_text():
     """Real 2013 sample top-level rect: single matrix pair, no drawText,
     outline points + sz/pos/outMargin, groupLevel="0"."""
-    root = etree.fromstring(hwp5_xml(glob.glob("samples/2013*.hwp")[0]))
+    root = etree.fromstring(hwp5_xml(_hwp("2013")))
     rect = map_drawing(_parse_drawing(_first_rec_gso(root)))
     xml = _run_xml(Run(char_pr_id=0, texts=[rect]))
     assert "<hp:rect " in xml and 'groupLevel="0"' in xml
@@ -260,7 +260,7 @@ def test_sample2013_toplevel_rects_no_text(tmp_path):
     from hwp2hwpx.convert import convert
     import zipfile
     out = tmp_path / "s2013.hwpx"
-    convert(glob.glob("samples/2013*.hwp")[0], str(out))
+    convert(_hwp("2013"), str(out))
     with zipfile.ZipFile(str(out)) as z:
         sec = z.read("Contents/section0.xml").decode("utf-8")
     root = etree.fromstring(sec.encode("utf-8"))

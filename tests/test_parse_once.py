@@ -11,8 +11,9 @@ from hwp5.xmlmodel import XmlEventsMixin
 
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
+from tests.samplepaths import hwp as _hwp
 
-SAMPLES = ["samples/3.", "samples/4.", "samples/★131008", "samples/20131106"]
+SAMPLES = ["3.", "4.", "★131008", "20131106"]
 
 
 class _SubprocessSpawned(BaseException):
@@ -33,7 +34,7 @@ class _SubprocessSpawned(BaseException):
 
 @pytest.mark.parametrize("pre", SAMPLES)
 def test_convert_spawns_no_subprocess(pre, monkeypatch):
-    hwp = glob.glob(pre + "*.hwp")[0]
+    hwp = _hwp(pre)
     def boom(*a, **k):
         raise _SubprocessSpawned("subprocess spawned: %r" % (a[0] if a else k))
     monkeypatch.setattr(subprocess, "run", boom)
@@ -47,7 +48,7 @@ def test_convert_spawns_no_subprocess(pre, monkeypatch):
 
 @pytest.mark.parametrize("pre", SAMPLES)
 def test_output_matches_golden(pre):
-    hwp = glob.glob(pre + "*.hwp")[0]
+    hwp = _hwp(pre)
     golden = glob.glob(os.path.join(
         "samples/goldens", os.path.basename(os.path.splitext(hwp)[0]) + ".hwpx"))
     if not golden:
@@ -83,7 +84,7 @@ def test_convert_shares_the_model_walk_per_stream(pre, monkeypatch):
     the I1 fix, rangetags.py re-walked `f.bodytext[name].models()` on its
     own uncached Section object, so BodyText/Section0 was parsed a third
     time (3 calls, not 2)."""
-    hwp = glob.glob(pre + "*.hwp")[0]
+    hwp = _hwp(pre)
 
     calls = []
     real_models = ModelStream.models
@@ -121,7 +122,7 @@ def test_convert_does_not_leak_file_descriptors_across_repeated_runs():
     reclaims a dropped `HwpSource`'s OLE storage. `convert()`'s `with
     HwpSource(...)` must close the handle deterministically instead, or
     descriptor counts climb without bound across repeated conversions."""
-    hwp = glob.glob("samples/3.*.hwp")[0]
+    hwp = _hwp("3.")
     gc.disable()
     try:
         with tempfile.TemporaryDirectory() as td:

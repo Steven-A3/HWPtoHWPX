@@ -2,6 +2,8 @@ import os
 import re
 import subprocess
 
+import pytest
+
 # samples/ is private and git-ignored, so no committed file may name a sample.
 # Match a samples/ path written as a quoted string literal, rather than any
 # bare mention of the word "samples/" (which also appears in ordinary prose,
@@ -14,11 +16,28 @@ import subprocess
 # filename: every legitimate glob reference contains one.
 _LITERAL_SAMPLE = re.compile(r"""['"]samples/[^'"*]*\.hwpx?(?=['"])""")
 
+# samples/test_document.hwp(x) is the one sample this project commits (task 2):
+# a document authored for this project with no confidential content. tests/
+# samplepaths.py names it literally by design (TEST_DOC/TEST_DOC_REF), so it
+# must not trip a gate meant to catch the private corpus.
+_PUBLIC_FIXTURE = {"samples/test_document.hwp", "samples/test_document.hwpx"}
+
+
+def _git_ls_files(pattern):
+    # test_fresh_clone.py exercises the suite from a plain directory copy
+    # (deliberately excluding .git, for speed and to avoid nesting a repo),
+    # so `git ls-files` has nothing to query there. Skip rather than fail:
+    # the gate itself is unaffected in every context that actually has a
+    # git checkout, real or cloned.
+    result = subprocess.run(["git", "ls-files", pattern],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        pytest.skip("not running inside a git checkout: %s" % result.stderr.strip())
+    return [p for p in result.stdout.splitlines() if p]
+
 
 def _tracked_python_files():
-    out = subprocess.run(["git", "ls-files", "*.py"],
-                         capture_output=True, text=True, check=True).stdout
-    paths = [p for p in out.splitlines() if p]
+    paths = _git_ls_files("*.py")
     # This module's own synthetic examples of the dangerous pattern (used to
     # prove the gate actually catches it) match _LITERAL_SAMPLE by design but
     # are not real sample names -- exclude this file from the scan it runs,
@@ -38,7 +57,8 @@ def _names_a_sample(line):
     quoted "samples/...hwp(x)" literal, so it never matches this in the
     first place -- nothing legitimate needs an exemption here.
     """
-    return _LITERAL_SAMPLE.search(line) is not None
+    m = _LITERAL_SAMPLE.search(line)
+    return m is not None and m.group(0)[1:] not in _PUBLIC_FIXTURE
 
 
 def test_no_committed_file_names_a_sample():
@@ -76,6 +96,14 @@ def test_gate_ignores_a_prose_mention_of_the_goldens_directory():
     assert not _names_a_sample(line)
 
 
+def test_gate_ignores_the_public_test_document_fixture():
+    # samples/test_document.hwp(x) is the one sample committed in task 2;
+    # tests/samplepaths.py names it literally (TEST_DOC/TEST_DOC_REF) by
+    # design, so the gate must not flag its own sanctioned literal.
+    assert not _names_a_sample('TEST_DOC = "samples/test_document.hwp"\n')
+    assert not _names_a_sample('TEST_DOC_REF = "samples/test_document.hwpx"\n')
+
+
 def test_gate_catches_a_literal_golden_path():
     # M2: samples/goldens/<basename>.hwpx leaks the same basename a plain
     # samples/<basename>.hwpx literal would -- a prefix exemption for
@@ -89,9 +117,7 @@ def test_no_fixture_derived_from_a_sample_is_tracked():
     # generated on demand by tests/samplepaths.py, not committed. A tracked
     # file there would leak the same document content this module guards
     # against, just one step removed from samples/ itself.
-    tracked = subprocess.run(["git", "ls-files", "tests/fixtures"],
-                             capture_output=True, text=True, check=True).stdout
-    tracked = [p for p in tracked.splitlines() if p]
+    tracked = _git_ls_files("tests/fixtures")
     assert tracked == [], (
         "tests/fixtures/ must stay generated-and-ignored (derived from "
         "private samples/), but git tracks: %s" % ", ".join(tracked))

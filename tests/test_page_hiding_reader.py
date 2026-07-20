@@ -1,7 +1,7 @@
-import glob
 from lxml import etree
 from hwp2hwpx.hwpmodel.reader import parse_paragraph, read_document, hwp5_xml
 from hwp2hwpx.mapper.body import map_paragraph
+from tests.samplepaths import hwp as _hwp
 
 
 def _para(inner):
@@ -48,7 +48,7 @@ def test_mapper_maps_ctrls():
 
 def test_sample3_has_two_pagehides_attached():
     from hwp2hwpx.hwpmodel.model import HwpPageHide
-    doc = read_document(hwp5_xml(glob.glob("samples/3.*.hwp")[0]))
+    doc = read_document(hwp5_xml(_hwp("3.")))
     def walk(paras):
         for p in paras:
             for run in p.runs:
