@@ -23,16 +23,24 @@ _LITERAL_SAMPLE = re.compile(r"""['"]samples/[^'"*]*\.hwpx?(?=['"])""")
 _PUBLIC_FIXTURE = {"samples/test_document.hwp", "samples/test_document.hwpx"}
 
 
+def _repo_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def _git_ls_files(pattern):
     # test_fresh_clone.py exercises the suite from a plain directory copy
     # (deliberately excluding .git, for speed and to avoid nesting a repo),
-    # so `git ls-files` has nothing to query there. Skip rather than fail:
-    # the gate itself is unaffected in every context that actually has a
-    # git checkout, real or cloned.
+    # so `git ls-files` has nothing to query there. Skip only that specific,
+    # intended case -- no .git directory at the repo root -- by checking for
+    # it directly rather than treating any nonzero exit as "not a checkout".
+    # A missing git binary or git's "detected dubious ownership" error (both
+    # real failure modes in container CI) must raise instead of skip: this
+    # gate exists because private document content once reached this public
+    # repository, and a silently-disabled gate is worse than a noisy one.
+    if not os.path.isdir(os.path.join(_repo_root(), ".git")):
+        pytest.skip("not running inside a git checkout: no .git directory")
     result = subprocess.run(["git", "ls-files", pattern],
-                            capture_output=True, text=True)
-    if result.returncode != 0:
-        pytest.skip("not running inside a git checkout: %s" % result.stderr.strip())
+                            capture_output=True, text=True, check=True)
     return [p for p in result.stdout.splitlines() if p]
 
 
