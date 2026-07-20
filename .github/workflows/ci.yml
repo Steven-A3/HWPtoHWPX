@@ -25,9 +25,20 @@ jobs:
         run: python -m pytest -q
       # The private corpus is absent here, so most tests skip. Assert the
       # public-fixture tests actually ran: a mistake in the skip logic would
-      # otherwise hollow CI out into a green no-op.
+      # otherwise hollow CI out into a green no-op. pytest exits 0 when every
+      # test skips, so the exit code alone proves nothing -- inspect the
+      # summary line and fail on any skip or on the absence of passes.
       - name: Verify the public-fixture gate ran
-        run: python -m pytest tests/test_public_fixture.py -q --no-header -rN
+        run: |
+          summary=$(python -m pytest tests/test_public_fixture.py -q --no-header | tail -1)
+          echo "$summary"
+          case "$summary" in
+            *skipped*) echo "::error::public-fixture gate skipped; the skip logic is wrong"; exit 1 ;;
+          esac
+          case "$summary" in
+            *passed*) ;;
+            *) echo "::error::public-fixture gate reported no passing tests"; exit 1 ;;
+          esac
 
   package:
     runs-on: ubuntu-latest
