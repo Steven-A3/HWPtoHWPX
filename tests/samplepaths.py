@@ -12,6 +12,7 @@ simply does not exist, and tests/conftest.py skips the tests that need one.
 import glob
 import os
 import subprocess
+import tempfile
 
 FIXTURE3 = "tests/fixtures/sample3.hwp5.xml"
 
@@ -81,9 +82,40 @@ def fixture3():
     if _fixture3_cache is not None:
         return _fixture3_cache
     if not os.path.exists(FIXTURE3) and os.path.exists(S3):
-        os.makedirs(os.path.dirname(FIXTURE3), exist_ok=True)
-        xml = subprocess.check_output(["hwp5proc", "xml", S3])
-        with open(FIXTURE3, "wb") as f:
-            f.write(xml)
+        fixture_dir = os.path.dirname(FIXTURE3)
+        os.makedirs(fixture_dir, exist_ok=True)
+        # M6: with the corpus present but hwp5proc missing from PATH, this
+        # used to raise a raw FileNotFoundError out of collection (pytest
+        # can't skip a collection-time error) with no hint of the cause --
+        # a contributor's first run getting an opaque traceback instead of
+        # "install hwp5proc". The corpus-absent case above already returns
+        # early without shelling out at all; this is strictly the
+        # corpus-present-but-tool-missing case.
+        try:
+            xml = subprocess.check_output(["hwp5proc", "xml", S3])
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "hwp5proc (from pyhwp) not found on PATH -- required to "
+                "generate %s from the private samples/ corpus. Install "
+                "pyhwp (`pip install pyhwp`) or otherwise put hwp5proc on "
+                "PATH, then re-run." % FIXTURE3
+            ) from exc
+        # Atomic: write to a temp file in the same directory, then rename.
+        # A process interrupted mid-write (Ctrl-C, OOM kill) must never
+        # leave a truncated FIXTURE3 behind -- os.path.exists(FIXTURE3)
+        # above would then treat that truncated file as already-generated
+        # forever, poisoning every later run in this checkout.
+        fd, tmp_path = tempfile.mkstemp(
+            dir=fixture_dir, prefix=".fixture3-", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(xml)
+            os.replace(tmp_path, FIXTURE3)
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
     _fixture3_cache = FIXTURE3
     return _fixture3_cache
