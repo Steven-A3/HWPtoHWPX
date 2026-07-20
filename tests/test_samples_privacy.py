@@ -65,8 +65,11 @@ def _names_a_sample(line):
     quoted "samples/...hwp(x)" literal, so it never matches this in the
     first place -- nothing legitimate needs an exemption here.
     """
-    m = _LITERAL_SAMPLE.search(line)
-    return m is not None and m.group(0)[1:] not in _PUBLIC_FIXTURE
+    # finditer, not search: search returns only the *first* literal on the
+    # line, so a private path sitting after an exempt public one on the same
+    # line -- e.g. a list of both -- would never be inspected at all.
+    return any(m.group(0)[1:] not in _PUBLIC_FIXTURE
+               for m in _LITERAL_SAMPLE.finditer(line))
 
 
 def test_no_committed_file_names_a_sample():
@@ -147,3 +150,17 @@ def test_no_fixture_derived_from_a_sample_is_tracked():
     assert tracked == [], (
         "tests/fixtures/ must stay generated-and-ignored (derived from "
         "private samples/), but git tracks: %s" % ", ".join(tracked))
+
+
+def test_gate_catches_a_private_literal_hiding_behind_the_public_one():
+    # A line may hold several literals. Matching only the first one lets an
+    # exempt public path act as a shield for a private path after it.
+    assert _names_a_sample(
+        'PATHS = ["samples/test_document.hwp", "samples/a private report.hwp"]\n')
+    assert _names_a_sample(
+        'PATHS = ["samples/a private report.hwp", "samples/test_document.hwp"]\n')
+
+
+def test_gate_still_allows_a_line_of_only_public_literals():
+    assert not _names_a_sample(
+        'PATHS = ["samples/test_document.hwp", "samples/test_document.hwpx"]\n')
