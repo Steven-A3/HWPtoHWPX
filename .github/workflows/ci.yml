@@ -30,6 +30,7 @@ jobs:
       # summary line and fail on any skip or on the absence of passes.
       - name: Verify the public-fixture gate ran
         run: |
+          set -o pipefail
           summary=$(python -m pytest tests/test_public_fixture.py -q --no-header | tail -1)
           echo "$summary"
           case "$summary" in
