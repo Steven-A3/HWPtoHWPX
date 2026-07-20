@@ -44,5 +44,11 @@ testpaths = ["tests"]
 include = ["hwp2hwpx*"]
 
 [build-system]
-requires = ["setuptools>=68"]
+# PEP 639 `license = "..."` + `license-files` (used above) require
+# setuptools >= 77; 68.2.2 fails with "project.license must be valid
+# exactly by one definition" under --no-build-isolation, where the newest
+# setuptools isn't fetched for you. CI passes on a lower floor only because
+# build isolation silently pulls a newer setuptools regardless of what's
+# declared here.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
