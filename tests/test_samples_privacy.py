@@ -120,6 +120,24 @@ def test_gate_catches_a_literal_golden_path():
     assert _names_a_sample('GOLDEN = "samples/goldens/made-up-basename.hwpx"\n')
 
 
+def test_public_fixture_exemption_does_not_shadow_a_private_sample():
+    # The exemption must be exact-match. A prefix- or directory-shaped rule
+    # would wave through any path that merely starts the same way.
+    assert _names_a_sample('X = "samples/test_document_private.hwp"\n')
+    assert _names_a_sample('X = "samples/test_document/real name.hwp"\n')
+
+
+def test_public_fixture_is_tracked():
+    # Routed through _git_ls_files (not a raw subprocess call) so this test
+    # skips, rather than crashes, in test_fresh_clone.py's simulated clone,
+    # which deliberately has no .git -- the same reason that helper exists.
+    tracked = sorted(_git_ls_files("samples"))
+    assert tracked == ["samples/test_document.hwp",
+                       "samples/test_document.hwpx"], (
+        "exactly the public fixture must be tracked under samples/, got: %s"
+        % tracked)
+
+
 def test_no_fixture_derived_from_a_sample_is_tracked():
     # tests/fixtures/ holds dumps (e.g. hwp5proc xml) of private samples --
     # generated on demand by tests/samplepaths.py, not committed. A tracked
