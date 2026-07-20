@@ -29,13 +29,14 @@ development and measure output quality:
                                     [Fidelity harness] ◀── diff ─┘  vs Hancom .hwpx
 ```
 
-- **Reader** (`hwp2hwpx/hwpmodel/`) — Parses the `.hwp` binary via pyhwp's
-  `hwp5proc` CLI (invoked as a subprocess to dump an XML representation of
-  the CFB/record structure, plus `hwp5proc ls`/`cat` for embedded binary
-  data and `hwp5proc summaryinfo` for document metadata) and builds a
-  normalized in-memory **HWP model** (`hwpmodel/model.py`): fonts, character
-  and paragraph shapes, styles, border/fills, numbering, sections,
-  paragraphs, runs, tables, drawings, and controls.
+- **Reader** (`hwp2hwpx/hwpmodel/`) — Parses the `.hwp` binary in-process via
+  pyhwp's `Hwp5File` API: `hwpmodel/source.py`'s `HwpSource` opens the file
+  once and memoizes the XML representation of the CFB/record structure,
+  embedded binary data, and summary info as each is first requested, with no
+  subprocess spawned. Builds a normalized in-memory **HWP model**
+  (`hwpmodel/model.py`): fonts, character and paragraph shapes, styles,
+  border/fills, numbering, sections, paragraphs, runs, tables, drawings, and
+  controls.
 - **Mapper** (`hwp2hwpx/mapper/`) — Pure model-to-model translation from the
   HWP model to an **OWPML model** (`owpml/model.py`), with one module per
   concern: `char_pr`, `para_pr`, `border_fill`, `style`, `tab`, `bullet`,
@@ -64,10 +65,11 @@ model contract holds.
 
 Requires **Python 3.9+**. Dependencies (see `pyproject.toml`):
 
-- [`pyhwp`](https://pypi.org/project/pyhwp/) — provides the `hwp5proc` CLI
-  the Reader shells out to, for parsing the HWP binary format.
+- [`pyhwp`](https://pypi.org/project/pyhwp/) — provides the `Hwp5File` API
+  the Reader uses in-process to parse the HWP binary format, and the
+  `hwp5proc` CLI used by a handful of test fixtures (not by the Reader).
 - [`lxml`](https://pypi.org/project/lxml/) — XML construction and parsing.
-- `six` — an undeclared runtime dependency of pyhwp's `hwp5proc`.
+- `six` — an undeclared runtime dependency of pyhwp.
 
 ```bash
 python -m venv .venv
