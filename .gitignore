@@ -6,6 +6,7 @@ venv/
 *.egg-info/
 dist/
 build/
+.DS_Store
 
 # Private test documents — never publish (government docs).
 # `samples/*`, not `samples/`: git cannot re-include a file whose parent
