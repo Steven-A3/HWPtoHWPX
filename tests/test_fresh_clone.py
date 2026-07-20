@@ -5,12 +5,18 @@ never exist there. Collection errors cannot be skipped, so a module that
 resolves a sample at import time takes the whole run down.
 """
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 
 import pytest
+
+# I4: the sample-free run currently reports well over 300 passing (316 at
+# the time this floor was set) -- a ratchet against regression, not a claim
+# about the exact count, which will drift up as tests are added.
+_MIN_EXPECTED_PASSED = 300
 
 from tests.samplepaths import samples_available
 
@@ -48,3 +54,15 @@ def test_suite_collects_and_passes_without_samples(tmp_path):
     assert result.returncode == 0, result.stdout[-3000:]
     assert " skipped" in result.stdout, (
         "expected sample-dependent tests to skip:\n%s" % result.stdout[-2000:])
+    # I4: " skipped" alone doesn't prove anything *ran* -- a future change
+    # that made every test skip (e.g. a bug in the skip predicate itself)
+    # would leave this green forever. Require a passed count, and require it
+    # be at least the sample-free floor, not just present.
+    passed_match = re.search(r"(\d+) passed", result.stdout)
+    assert passed_match, (
+        "expected a passed count in the summary line:\n%s"
+        % result.stdout[-2000:])
+    passed = int(passed_match.group(1))
+    assert passed >= _MIN_EXPECTED_PASSED, (
+        "only %d tests passed without samples/, expected at least %d:\n%s"
+        % (passed, _MIN_EXPECTED_PASSED, result.stdout[-2000:]))
