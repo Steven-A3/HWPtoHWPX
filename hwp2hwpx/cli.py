@@ -48,25 +48,32 @@ def _build_parser():
     return parser
 
 
+def _outcome(result):
+    # The one-word-per-file outcome, in the same vocabulary as the counts
+    # keys below -- not Job/Result.action, which is a planning-time verb
+    # ("convert") that stays "convert" even for a job that then fails.
+    if not result.ok:
+        return "failed"
+    if result.action == "skip":
+        return "skipped"
+    if result.action == "overwrite":
+        return "overwritten"
+    return "converted"
+
+
 def _counts(results):
     counts = {"converted": 0, "overwritten": 0, "skipped": 0, "failed": 0}
     for result in results:
-        if not result.ok:
-            counts["failed"] += 1
-        elif result.action == "skip":
-            counts["skipped"] += 1
-        elif result.action == "overwrite":
-            counts["overwritten"] += 1
-        else:
-            counts["converted"] += 1
+        counts[_outcome(result)] += 1
     return counts
 
 
 def _write_json(path, counts, results):
     report = {
         "counts": counts,
-        "files": [{"input": r.input, "output": r.output, "action": r.action,
-                   "ok": r.ok, "error": r.error, "error_type": r.error_type}
+        "files": [{"input": r.input, "output": r.output,
+                   "action": _outcome(r), "ok": r.ok, "error": r.error,
+                   "error_type": r.error_type}
                   for r in results],
     }
     text = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
@@ -86,7 +93,28 @@ def main(argv):
     except UsageError as exc:
         parser.error(str(exc))  # raises SystemExit(EXIT_USAGE)
     if args.outdir:
-        os.makedirs(args.outdir, exist_ok=True)
+        try:
+            os.makedirs(args.outdir, exist_ok=True)
+        except OSError as exc:
+            # exist_ok=True only covers "already a directory" -- an existing
+            # regular file (FileExistsError) or an unwritable parent
+            # (PermissionError) still raise. Either is a bad invocation, not
+            # a failed document, and must exit 2 rather than surface as a
+            # traceback with exit 1.
+            parser.error("cannot use --outdir %r: %s" % (args.outdir, exc))
+    if args.json_path and args.json_path != "-":
+        # Validated up front, alongside the other usage checks, for the same
+        # reason as --outdir above: an unwritable report path is a bad
+        # invocation, not a conversion failure, and must not surface as a
+        # traceback with exit 1 after a fully successful run. Opening for
+        # append (not truncating) proves the path is writable without
+        # disturbing any existing file there before the real write below.
+        try:
+            with open(args.json_path, "a", encoding="utf-8"):
+                pass
+        except OSError as exc:
+            parser.error("cannot write --json report to %r: %s" %
+                         (args.json_path, exc))
 
     def report(result):
         if result.ok:

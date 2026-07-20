@@ -6,6 +6,9 @@ import pytest
 from hwp2hwpx.cli import main
 from tests.samplepaths import S3
 
+# Permission-denial tests are meaningless as root, which ignores file modes.
+_IS_ROOT = hasattr(os, "geteuid") and os.geteuid() == 0
+
 
 def test_converts_a_single_file_with_explicit_output(tmp_path):
     out = tmp_path / "out.hwpx"
@@ -68,6 +71,69 @@ def test_o_with_several_inputs_is_a_usage_error():
     assert exc.value.code == 2
 
 
+def test_outdir_that_is_an_existing_regular_file_is_a_usage_error(tmp_path):
+    # I1: exist_ok=True on os.makedirs only covers "already a directory" --
+    # an existing regular file at the --outdir path must not escape as a
+    # FileExistsError traceback with exit 1.
+    outdir = tmp_path / "not-a-directory"
+    outdir.write_bytes(b"x")
+    with pytest.raises(SystemExit) as exc:
+        main([S3, "--outdir", str(outdir)])
+    assert exc.value.code == 2
+
+
+@pytest.mark.skipif(_IS_ROOT, reason="permission checks are meaningless as root")
+def test_outdir_with_an_unwritable_parent_is_a_usage_error(tmp_path):
+    # I1: an unwritable parent raises PermissionError, which must also be
+    # caught as a usage error rather than surfacing as a traceback.
+    parent = tmp_path / "readonly"
+    parent.mkdir()
+    os.chmod(str(parent), 0o555)
+    try:
+        with pytest.raises(SystemExit) as exc:
+            main([S3, "--outdir", str(parent / "sub")])
+        assert exc.value.code == 2
+    finally:
+        os.chmod(str(parent), 0o755)  # restore so pytest can clean up tmp_path
+
+
+def test_json_path_in_a_nonexistent_directory_is_a_usage_error(tmp_path):
+    # I2: validated up front, alongside --outdir -- before any conversion
+    # runs, not after a fully successful batch tracebacks trying to write
+    # the report.
+    bad = tmp_path / "nope" / "report.json"
+    with pytest.raises(SystemExit) as exc:
+        main([S3, "--outdir", str(tmp_path), "--json", str(bad)])
+    assert exc.value.code == 2
+    # Proves the check runs before conversion: --outdir was otherwise valid,
+    # so a real bug here would have written an output file despite the
+    # usage error.
+    assert os.listdir(str(tmp_path)) == []
+
+
+@pytest.mark.skipif(_IS_ROOT, reason="permission checks are meaningless as root")
+def test_unwritable_json_path_is_a_usage_error(tmp_path):
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    parent = tmp_path / "readonly"
+    parent.mkdir()
+    os.chmod(str(parent), 0o555)
+    try:
+        with pytest.raises(SystemExit) as exc:
+            main([S3, "--outdir", str(outdir), "--json", str(parent / "r.json")])
+        assert exc.value.code == 2
+    finally:
+        os.chmod(str(parent), 0o755)
+
+
+def test_json_dash_still_writes_to_stdout_without_needing_a_real_path(tmp_path, capsys):
+    # Regression guard: the up-front writability check must special-case "-"
+    # (stdout) rather than trying to open a file literally named "-".
+    rc = main([S3, "--outdir", str(tmp_path), "--json", "-"])
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out)["counts"]["converted"] == 1
+
+
 def test_json_flag_does_not_swallow_a_positional_input(tmp_path):
     # The V3 gate: with an optional-valued --json, argparse binds the first
     # positional to the flag and silently drops it from the run.
@@ -89,6 +155,30 @@ def test_json_report_records_counts_and_per_file_status(tmp_path):
     assert data["counts"] == {"converted": 1, "overwritten": 0,
                               "skipped": 0, "failed": 1}
     assert {f["ok"] for f in data["files"]} == {True, False}
+    # M5: per-file "action" must use the same outcome vocabulary as "counts"
+    # above -- a failed job is action "failed", not the planning-time verb
+    # "convert" it was assigned before it ran.
+    by_input = {f["input"]: f for f in data["files"]}
+    assert by_input[S3]["action"] == "converted"
+    assert by_input["does-not-exist.hwp"]["action"] == "failed"
+    assert {f["action"] for f in data["files"]} <= {
+        "converted", "overwritten", "skipped", "failed"}
+
+
+def test_json_report_action_covers_skip_and_overwrite_outcomes(tmp_path):
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    out = outdir / os.path.basename(os.path.splitext(S3)[0] + ".hwpx")
+    out.write_bytes(b"already here")
+    report = tmp_path / "report.json"
+
+    rc = main([S3, "--outdir", str(outdir), "--json", str(report)])
+    assert rc == 0
+    assert json.loads(report.read_text(encoding="utf-8"))["files"][0]["action"] == "skipped"
+
+    rc = main([S3, "--outdir", str(outdir), "--force", "--json", str(report)])
+    assert rc == 0
+    assert json.loads(report.read_text(encoding="utf-8"))["files"][0]["action"] == "overwritten"
 
 
 def test_json_to_stdout(tmp_path, capsys):
