@@ -32,7 +32,15 @@ import pytest
 #     "samples/" directory;
 #   - accepts '/' or '\' as the separator, both before and after "samples",
 #     so a backslash-separated path is caught too;
-#   - matches the extension case-insensitively, so "X.HWP" is caught.
+#   - matches the extension case-insensitively, so "X.HWP" is caught;
+#   - treats a markdown backtick span and a markdown link target as delimiters
+#     too, not just Python quotes: docs/**/*.md is in scope, and prose there
+#     writes paths as `samples/x.hwp` or [text](samples/x.hwp). Two real
+#     planning documents leaked a filename in exactly the backtick form and
+#     were invisible to the quote-only version of this pattern;
+#   - excludes '<' and '>' from the body: docs write metavariable placeholders
+#     as `samples/<name>.hwp`, and no real filename can contain either
+#     character, so this distinguishes a placeholder from a leak.
 #
 # Known, deliberate gaps (not achievable here without unacceptable false
 # positives -- do not assume these are covered):
@@ -49,14 +57,6 @@ import pytest
 #   - `"samples/x.hwp.bak"`: the extension check requires the literal to end
 #     at ".hwp"/".hwpx" or hit a non-word character there; a suffix tacked on
 #     after a *word* character (rare in practice) would still slip through.
-#   - treats a markdown backtick span and a markdown link target as delimiters
-#     too, not just Python quotes: docs/**/*.md is in scope, and prose there
-#     writes paths as `samples/x.hwp` or [text](samples/x.hwp). Two real
-#     planning documents leaked a filename in exactly the backtick form and
-#     were invisible to the quote-only version of this pattern.
-#   - excludes '<' and '>' from the body: docs write metavariable placeholders
-#     as `samples/<name>.hwp`, and no real filename can contain either
-#     character, so this distinguishes a placeholder from a leak.
 _LITERAL_SAMPLE = re.compile(
     r"""['"`(\[][^'"`*)\]<>]*(?<=['"`(\[/\\])"""
     r"""(?P<path>samples[/\\][^'"`*)\]<>]*\.hwpx?)(?=['"`)\]])""",
