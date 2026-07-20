@@ -9,10 +9,10 @@ def _para(inner):
 
 
 def test_trailing_empty_run_appended_when_mark_shape_differs():
-    p = _para('<Text charshape-id="40">제안요청서</Text>'
+    p = _para('<Text charshape-id="40">abcde</Text>'
               '<ControlChar name="PARAGRAPH_BREAK" charshape-id="34" code="13" kind="CHAR"/>')
     assert len(p.runs) == 2
-    assert p.runs[0].char_shape_id == 40 and p.runs[0].contents == ['제안요청서']
+    assert p.runs[0].char_shape_id == 40 and p.runs[0].contents == ['abcde']
     assert p.runs[1].char_shape_id == 34 and p.runs[1].contents == []
 
 

@@ -22,9 +22,11 @@ def test_sample4_no_missing_runs(tmp_path):
 
 
 def test_sample4_known_paragraph_gains_trailing_empty_run(tmp_path):
-    # the "제안요청서" paragraph gains a trailing bare <hp:run charPrIDRef="34"/>.
+    # A known paragraph's text run is immediately followed by a bare
+    # <hp:run charPrIDRef="34"/>: the paragraph-break's char shape differs
+    # from its last content run, so it gets its own trailing empty run.
     xml = _section(S4, tmp_path).decode("utf-8")
-    assert '<hp:t>제안요청서</hp:t></hp:run><hp:run charPrIDRef="34"/>' in xml
+    assert '</hp:run><hp:run charPrIDRef="34"/>' in xml
 
 
 def test_sample4_section_match_rises(tmp_path):

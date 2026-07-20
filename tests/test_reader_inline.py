@@ -1,7 +1,9 @@
 from hwp2hwpx.hwpmodel.reader import read_document
 from hwp2hwpx.hwpmodel.model import HwpControl
 
-FIXTURE = "tests/fixtures/sample3.hwp5.xml"
+from tests.samplepaths import fixture3
+
+FIXTURE = fixture3()
 
 
 def _walk(paragraphs):

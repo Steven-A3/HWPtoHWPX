@@ -1,7 +1,9 @@
 """Table/cell borderfill-id refs are raw (1-based) and clamped into [1, N]."""
 from hwp2hwpx.hwpmodel.reader import read_document
 
-FIXTURE = "tests/fixtures/sample3.hwp5.xml"
+from tests.samplepaths import fixture3
+
+FIXTURE = fixture3()
 
 # Synthetic doc: 2 BorderFill defs -> valid ids are [1, 2]. Exercises the
 # clamp's out-of-range branches directly (the real fixture's raw ids never

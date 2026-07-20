@@ -25,3 +25,16 @@ def test_no_committed_file_names_a_sample():
     assert offenders == [], (
         "committed files name private samples; use tests/samplepaths.py: %s"
         % ", ".join(offenders))
+
+
+def test_no_fixture_derived_from_a_sample_is_tracked():
+    # tests/fixtures/ holds dumps (e.g. hwp5proc xml) of private samples --
+    # generated on demand by tests/samplepaths.py, not committed. A tracked
+    # file there would leak the same document content this module guards
+    # against, just one step removed from samples/ itself.
+    tracked = subprocess.run(["git", "ls-files", "tests/fixtures"],
+                             capture_output=True, text=True, check=True).stdout
+    tracked = [p for p in tracked.splitlines() if p]
+    assert tracked == [], (
+        "tests/fixtures/ must stay generated-and-ignored (derived from "
+        "private samples/), but git tracks: %s" % ", ".join(tracked))

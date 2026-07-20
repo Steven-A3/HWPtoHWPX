@@ -1,6 +1,8 @@
 from hwp2hwpx.hwpmodel.reader import read_document
 
-FIXTURE = "tests/fixtures/sample3.hwp5.xml"
+from tests.samplepaths import fixture3
+
+FIXTURE = fixture3()
 
 
 def _sec_def():
