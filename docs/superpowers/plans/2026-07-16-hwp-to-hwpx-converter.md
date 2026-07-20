@@ -29,7 +29,7 @@ Implements spec sequencing steps 1–2 (end-to-end skeleton + text/char/paragrap
   - `ocf` = `urn:oasis:names:tc:opendocument:xmlns:container`
   - `odf` = `urn:oasis:names:tc:opendocument:xmlns:manifest:1.0`
   - `hv`  = `http://www.hancom.co.kr/hwpml/2011/version`
-- Ground-truth test fixtures live in `samples/`: `3.과업지시서_070.hwp`/`.hwpx`, `4.제안요청서_070.hwp`/`.hwpx`.
+- Ground-truth test fixtures live in `samples/`: `3.*.hwp`/`.hwpx`, `4.*.hwp`/`.hwpx`.
 - TDD: every task writes a failing test first, then minimal code, then commits. Frequent commits.
 
 ## Package layout (locked)
@@ -893,7 +893,7 @@ import subprocess
 import sys
 import os
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = "samples/3.*.hwp"
 OUT = "tests/fixtures/sample3.hwp5.xml"
 
 
@@ -922,7 +922,7 @@ Record the actual tag names you see (e.g. record `tag-id` names like `FaceName`,
 from hwp2hwpx.hwpmodel.reader import hwp5_xml
 from lxml import etree
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = "samples/3.*.hwp"
 
 
 def test_dump_is_wellformed_xml():
@@ -1607,7 +1607,7 @@ import zipfile
 from lxml import etree
 from hwp2hwpx.convert import convert
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = "samples/3.*.hwp"
 
 
 def test_convert_produces_valid_hwpx(tmp_path):
@@ -1691,7 +1691,7 @@ def test_canonical_detects_real_difference():
 
 
 def test_unzip_parts_reads_sample(tmp_path):
-    parts = unzip_parts("samples/3.과업지시서_070.hwpx")
+    parts = unzip_parts("samples/3.*.hwpx")
     assert "Contents/section0.xml" in parts
     assert parts["mimetype"] == b"application/hwp+zip"
 ```
@@ -1865,7 +1865,7 @@ import pytest
 from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 
-SAMPLES = [("samples/3.과업지시서_070.hwp", "samples/3.과업지시서_070.hwpx")]
+SAMPLES = [("samples/3.*.hwp", "samples/3.*.hwpx")]
 
 
 @pytest.mark.parametrize("hwp,ref", SAMPLES)
@@ -1909,7 +1909,7 @@ git commit -m "feat: fidelity structural diff + per-element scorer + report"
 import os
 from hwp2hwpx.cli import main
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = "samples/3.*.hwp"
 
 
 def test_cli_converts(tmp_path):
@@ -1977,7 +1977,7 @@ Expected: all tests pass.
 
 Run:
 ```bash
-.venv/bin/hwp2hwpx "samples/4.제안요청서_070.hwp" -o /tmp/out.hwpx && .venv/bin/python -c "import zipfile,sys; z=zipfile.ZipFile('/tmp/out.hwpx'); print('OK', z.namelist()[0], len(z.namelist()), 'parts')"
+.venv/bin/hwp2hwpx "samples/4.*.hwp" -o /tmp/out.hwpx && .venv/bin/python -c "import zipfile,sys; z=zipfile.ZipFile('/tmp/out.hwpx'); print('OK', z.namelist()[0], len(z.namelist()), 'parts')"
 ```
 Expected: prints `OK mimetype <N> parts`. If you have Hancom Office available, open `/tmp/out.hwpx` to confirm it loads (text should be present; formatting fidelity is the follow-up plans' job).
 

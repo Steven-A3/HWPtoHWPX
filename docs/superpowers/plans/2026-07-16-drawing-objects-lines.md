@@ -15,7 +15,7 @@
 - **Correctness gate is count-based, NOT exact-subtree** (line geometry is computed/recomputed by Hancom): `hp:line`==6 on sample 4, container/line tags leave-or-shrink in the section0 miss list, file stays valid. Stored values mapped faithfully; unstored/computed attrs (`instid`, `fillBrush` colors, matrix float formatting, some `pos` flags) use documented schema-valid defaults.
 - **Sample-3 regression guard:** sample 3 has zero `GShapeObjectControl`; its converted output must be byte-identical to before this milestone. Non-line component kinds (`$pic`, `$rec`, …) must be silently skipped (return `None`), never crash — pictures are Slice B.
 - **Two namespaces:** `hc:` (core) for `transMatrix`/`scaMatrix`/`rotMatrix`/`fillBrush`/`winBrush`/`startPt`/`endPt`; `hp:` for the rest. `NS["hc"]` exists in `hwp2hwpx/constants.py`.
-- Samples at `samples/4.제안요청서_070.hwp[x]` (present locally). Reader unit tests use synthetic XML snippets (sample-independent); the sample-4 count lives in the end-to-end task.
+- Samples at `samples/4.*.hwp[x]` (present locally). Reader unit tests use synthetic XML snippets (sample-independent); the sample-4 count lives in the end-to-end task.
 
 ### Verified matrix mapping (source `Matrix a/b/c/d/e/f` → target `e1..e6`)
 
@@ -999,10 +999,10 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
-S4 = "samples/4.제안요청서_070.hwp"
-S4_REF = "samples/4.제안요청서_070.hwpx"
-S3 = "samples/3.과업지시서_070.hwp"
-S3_REF = "samples/3.과업지시서_070.hwpx"
+S4 = "samples/4.*.hwp"
+S4_REF = "samples/4.*.hwpx"
+S3 = "samples/3.*.hwp"
+S3_REF = "samples/3.*.hwpx"
 
 
 def _section0(hwp, tmp_path, name):
@@ -1060,7 +1060,7 @@ Run:
 import zipfile, tempfile, os
 from hwp2hwpx.convert import convert
 out = tempfile.mktemp(suffix='.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
+convert('samples/3.*.hwp', out)
 s = zipfile.ZipFile(out).read('Contents/section0.xml').decode()
 os.unlink(out)
 tags = ['<hp:line ', '<hp:orgSz', '<hp:curSz', '<hp:rotationInfo', '<hp:renderingInfo', '<hc:startPt', '<hp:lineShape']

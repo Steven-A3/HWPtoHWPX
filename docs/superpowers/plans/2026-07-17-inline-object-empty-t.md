@@ -15,7 +15,7 @@
 - **Fidelity scoring is element-count per tag** — the trailing empty `<hp:t>` adds one `t` element; extra `t` never lowers the score (`min(ours, theirs)`).
 - **The rule:** in `_write_run`, after writing the object, append `etree.SubElement(r, _hp("t"))` iff the run carries a `table` OR a `drawing` whose `pos.treat_as_char == 1`. The empty `<hp:t>` is the run's last child.
 - **Object runs have empty `texts`** (guaranteed by the reader/mapper), so the text branch never emits a `<hp:t>` for them — no double `<hp:t>`.
-- **Samples:** `samples/3.과업지시서_070.hwp` (t 33 → 0) and `samples/4.제안요청서_070.hwp` (t 25 → 0). This milestone CHANGES sample 3's `section0.xml`.
+- **Samples:** `samples/3.*.hwp` (t 33 → 0) and `samples/4.*.hwp` (t 25 → 0). This milestone CHANGES sample 3's `section0.xml`.
 
 ---
 

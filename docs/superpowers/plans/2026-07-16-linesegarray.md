@@ -457,7 +457,7 @@ git commit -m "feat: emit hp:linesegarray after runs in each paragraph"
 import zipfile
 from hwp2hwpx.convert import convert
 
-SAMPLE_HWP = "samples/3.과업지시서_070.hwp"
+SAMPLE_HWP = "samples/3.*.hwp"
 
 
 def _section(tmp_path):
@@ -504,8 +504,8 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 import tempfile, os
 out = os.path.join(tempfile.mkdtemp(), 'out.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
-print(report(out, 'samples/3.과업지시서_070.hwpx'))
+convert('samples/3.*.hwp', out)
+print(report(out, 'samples/3.*.hwpx'))
 "
 ```
 Expected: `section0.xml` match ~99%; `lineseg`/`linesegarray` gone from the section miss list. Record the number in the commit message.

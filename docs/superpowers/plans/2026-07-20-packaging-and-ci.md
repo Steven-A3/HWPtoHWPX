@@ -143,14 +143,18 @@ def _one(pattern, fallback):
 def hwp(prefix):
     """The source document whose filename starts with `prefix`.
 
-    Returns a non-existent placeholder path when the sample is absent.
+    Returns a non-existent placeholder path when the sample is absent. The
+    fallback keeps the glob's own '*' rather than going fully literal: the
+    privacy gate (tests/test_samples_privacy.py) treats any quoted
+    samples/...hwp(x) string with no '*' as a leaked filename, and this one
+    never resolves to a real document anyway.
     """
-    return _one("samples/%s*.hwp" % prefix, "samples/%s-missing.hwp" % prefix)
+    return _one("samples/%s*.hwp" % prefix, "samples/%s*missing.hwp" % prefix)
 
 
 def hwpx(prefix):
     """Hancom's own .hwpx export of that document -- the fidelity reference."""
-    return _one("samples/%s*.hwpx" % prefix, "samples/%s-missing.hwpx" % prefix)
+    return _one("samples/%s*.hwpx" % prefix, "samples/%s*missing.hwpx" % prefix)
 
 
 S3 = hwp("3.")
@@ -411,30 +415,13 @@ and replace the body of `_names_a_sample` with:
     return match.group(0).strip("'\"") not in _PUBLIC_FIXTURES
 ```
 
-Then add these tests at the end of the file:
-
-```python
-def test_gate_allows_the_public_fixture_by_exact_path():
-    assert not _names_a_sample('DOC = "samples/test_document.hwp"\n')
-    assert not _names_a_sample('REF = "samples/test_document.hwpx"\n')
-
-
-def test_public_fixture_exemption_does_not_shadow_a_private_sample():
-    # The exemption must be exact-match. A prefix- or directory-shaped rule
-    # would wave through any path that merely starts the same way.
-    assert _names_a_sample('X = "samples/test_document_private.hwp"\n')
-    assert _names_a_sample('X = "samples/test_document/real name.hwp"\n')
-
-
-def test_public_fixture_is_tracked():
-    out = subprocess.run(["git", "ls-files", "samples"],
-                         capture_output=True, text=True, check=True).stdout
-    tracked = sorted(p for p in out.splitlines() if p)
-    assert tracked == ["samples/test_document.hwp",
-                       "samples/test_document.hwpx"], (
-        "exactly the public fixture must be tracked under samples/, got: %s"
-        % tracked)
-```
+Then add tests covering: the exemption allows the public fixture by its
+exact path; the exemption is exact-match only, so a private filename that
+merely starts with the public fixture's basename (or sits under a
+same-named directory) must still be flagged, not waved through by a
+prefix- or directory-shaped rule; and exactly the public fixture pair is
+tracked under `samples/`. (Final assertions shipped in
+`tests/test_samples_privacy.py`.)
 
 - [ ] **Step 5: Track the fixture and verify the gates**
 

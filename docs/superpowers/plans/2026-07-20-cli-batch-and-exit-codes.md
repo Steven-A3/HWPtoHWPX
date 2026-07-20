@@ -955,7 +955,7 @@ In every file below, add the import after the existing imports and replace the l
 Two shapes appear. A module-level constant bound to a literal:
 
 ```python
-SAMPLE_HWP = "samples/<literal>.hwp"       # before
+SAMPLE_HWP = "samples/3.*.hwp"             # before (hardcoded filename)
 SAMPLE_HWP = S3                            # after
 ```
 
@@ -963,7 +963,7 @@ and a literal used inline, in a list, tuple, or dict key:
 
 ```python
 PAIRS = [
-    ("samples/<literal>.hwp", "samples/<literal>.hwpx"),    # before
+    ("samples/3.*.hwp", "samples/3.*.hwpx"),                 # before
 ]
 PAIRS = [
     (S3, S3_REF),                                            # after

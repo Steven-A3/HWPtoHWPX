@@ -607,7 +607,7 @@ import zipfile
 import re
 from hwp2hwpx.convert import convert
 
-SAMPLE_HWP = "samples/3.과업지시서_070.hwp"
+SAMPLE_HWP = "samples/3.*.hwp"
 
 
 def _out_header(tmp_path):
@@ -668,8 +668,8 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 import tempfile, os
 out = os.path.join(tempfile.mkdtemp(), 'out.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
-print(report(out, 'samples/3.과업지시서_070.hwpx'))
+convert('samples/3.*.hwp', out)
+print(report(out, 'samples/3.*.hwpx'))
 "
 ```
 Expected: `header.xml` match materially above 71.2%; `ratio`/`spacing`/`relSz`/`offset`/`underline`/`strikeout`/`outline`/`shadow` no longer dominate the header miss list. Record the number in the commit message.

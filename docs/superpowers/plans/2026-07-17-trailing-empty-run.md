@@ -15,7 +15,7 @@
 - **Fidelity scoring is element-count per tag** — a trailing empty run adds one `run` element and no `t`; extra runs never lower the score (`min(ours, theirs)` per tag).
 - **The rule:** append a trailing empty run iff `break_cs is not None and last_cs is not None and break_cs != last_cs`, where `break_cs` = the `PARAGRAPH_BREAK` child's `charshape-id` (int) and `last_cs` = the char shape of the last run whose `contents` is non-empty. Never fires for empty paragraphs or table/drawing-terminated paragraphs.
 - **Empty run shape:** `HwpRun(char_shape_id=break_cs, contents=[])` — the writer serializes a texts/table/drawing-less run as bare `<hp:run charPrIDRef="X"/>`.
-- **Samples:** `samples/3.과업지시서_070.hwp` (gap 4 → 0) and `samples/4.제안요청서_070.hwp` (gap 36 → −2, over-emission score-neutral). This milestone legitimately CHANGES sample 3's `section0.xml`.
+- **Samples:** `samples/3.*.hwp` (gap 4 → 0) and `samples/4.*.hwp` (gap 36 → −2, over-emission score-neutral). This milestone legitimately CHANGES sample 3's `section0.xml`.
 
 ---
 
@@ -44,10 +44,10 @@ def _para(inner):
 
 
 def test_trailing_empty_run_appended_when_mark_shape_differs():
-    p = _para('<Text charshape-id="40">제안요청서</Text>'
+    p = _para('<Text charshape-id="40">가나다</Text>'
               '<ControlChar name="PARAGRAPH_BREAK" charshape-id="34" code="13" kind="CHAR"/>')
     assert len(p.runs) == 2
-    assert p.runs[0].char_shape_id == 40 and p.runs[0].contents == ['제안요청서']
+    assert p.runs[0].char_shape_id == 40 and p.runs[0].contents == ['가나다']
     assert p.runs[1].char_shape_id == 34 and p.runs[1].contents == []
 
 
@@ -205,9 +205,10 @@ def test_sample4_no_missing_runs(tmp_path):
 
 
 def test_sample4_known_paragraph_gains_trailing_empty_run(tmp_path):
-    # the "제안요청서" paragraph gains a trailing bare <hp:run charPrIDRef="34"/>.
+    # a known single-word paragraph in sample 4 gains a trailing bare
+    # <hp:run charPrIDRef="34"/> right after its own closing </hp:t>
     xml = _section(S4, tmp_path).decode("utf-8")
-    assert '<hp:t>제안요청서</hp:t></hp:run><hp:run charPrIDRef="34"/>' in xml
+    assert '</hp:t></hp:run><hp:run charPrIDRef="34"/>' in xml
 
 
 def test_sample4_section_match_rises(tmp_path):
@@ -227,7 +228,7 @@ def test_sample3_no_missing_runs_and_match_rises(tmp_path):
 - [ ] **Step 4: Run the end-to-end tests**
 
 Run: `.venv/bin/python -m pytest tests/test_convert_trailing_run.py -v`
-Expected: PASS (4 tests). If `test_sample4_known_paragraph_gains_trailing_empty_run` fails, the serialization differs — print the actual substring around `제안요청서</hp:t>` and reconcile (the run must be bare, no `<hp:t>`).
+Expected: PASS (4 tests). If `test_sample4_known_paragraph_gains_trailing_empty_run` fails, the serialization differs — print the actual substring around that known paragraph's closing `</hp:t>` and reconcile (the run must be bare, no `<hp:t>`).
 
 - [ ] **Step 5: Run the full suite (all green now)**
 

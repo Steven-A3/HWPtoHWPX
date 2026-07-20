@@ -493,8 +493,8 @@ from hwp2hwpx.fidelity.diff import score_part
 from hwp2hwpx.fidelity.xmlnorm import unzip_parts
 
 PAIRS = [
-    ("samples/3.과업지시서_070.hwp", "samples/3.과업지시서_070.hwpx"),
-    ("samples/4.제안요청서_070.hwp", "samples/4.제안요청서_070.hwpx"),
+    ("samples/3.*.hwp", "samples/3.*.hwpx"),
+    ("samples/4.*.hwp", "samples/4.*.hwpx"),
 ]
 
 

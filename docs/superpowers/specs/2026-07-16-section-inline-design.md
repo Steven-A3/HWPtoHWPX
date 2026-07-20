@@ -14,10 +14,10 @@ Success = `fwSpace` (30) and `lineBreak` (11) appear in section0 as mixed conten
 
 HWP paragraphs contain, inline within `LineSeg`, a sequence of `Text` and `ControlChar` elements, each with a `charshape-id`:
 ```
-<Text charshape-id="94" lang="ko">따라 … 납부해야 함</Text>
+<Text charshape-id="94" lang="ko">(body text)</Text>
 <ControlChar charshape-id="94" code="31" kind="CHAR" name="FIXWIDTH_SPACE"/>
-<Text charshape-id="94" lang="other">(※ </Text>
-<Text charshape-id="94" lang="ko">별표1,</Text>
+<Text charshape-id="94" lang="other">(annotation mark) </Text>
+<Text charshape-id="94" lang="ko">(more body text),</Text>
 <ControlChar charshape-id="94" code="31" kind="CHAR" name="FIXWIDTH_SPACE"/>
 …
 ```
@@ -25,15 +25,15 @@ The only inline `ControlChar` kinds are **`FIXWIDTH_SPACE`**, **`LINE_BREAK`**, 
 
 Hancom merges a maximal run of `Text` + `FIXWIDTH_SPACE`/`LINE_BREAK` sharing one `charshape-id` into a **single `<hp:run charPrIDRef=N>` with one `<hp:t>`** whose content is mixed — text nodes interleaved with empty control elements:
 ```
-<hp:run charPrIDRef="94"><hp:t>따라 … 납부해야 함<hp:fwSpace/>(※ 별표1,<hp:fwSpace/>별표2 참조)</hp:t></hp:run>
+<hp:run charPrIDRef="94"><hp:t>(body text)<hp:fwSpace/>(annotation mark) (more body text),<hp:fwSpace/>(more body text)</hp:t></hp:run>
 ```
-`<hp:lineBreak/>` appears the same way (`<hp:t><hp:lineBreak/>AI 기반 …</hp:t>`).
+`<hp:lineBreak/>` appears the same way (`<hp:t><hp:lineBreak/>(body text)</hp:t>`).
 
 **Verified mapping:**
 - `FIXWIDTH_SPACE` → `<hp:fwSpace/>` (empty element inside `hp:t`).
 - `LINE_BREAK` → `<hp:lineBreak/>` (empty element inside `hp:t`).
 - `PARAGRAPH_BREAK` → skipped (implicit paragraph end in HWPX).
-- Runs are split **only** by `charshape-id` change (differing `lang` on `Text` does not split — `(※ ` lang=other and `별표1,` lang=ko stay in one run), by a `TableControl`, or by `PARAGRAPH_BREAK`.
+- Runs are split **only** by `charshape-id` change (differing `lang` on `Text` does not split — an `other`-lang annotation mark and the `ko`-lang body text right after it stay in one run), by a `TableControl`, or by `PARAGRAPH_BREAK`.
 
 ## Decisions
 

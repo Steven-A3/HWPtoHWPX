@@ -34,10 +34,11 @@ Sample 3, section 0: **zero** `kind=2` range tags (verified) → no markpen outp
 
 OWPML shape (verified in Hancom's `section0.xml`), markers **inside** one `<hp:t>`:
 ```xml
-<hp:run charPrIDRef="96"><hp:t>낙찰, <hp:markpenBegin color="#FFFFFF"/>계약체결 및 이행 등의 과정(준공<hp:markpenEnd/></hp:t></hp:run>
+<hp:run charPrIDRef="96"><hp:t>(body text), <hp:markpenBegin color="#FFFFFF"/>(highlighted body text)<hp:markpenEnd/></hp:t></hp:run>
 ```
-`start=16` was verified to land exactly before "계약체결" by counting UTF-16
-code units from the paragraph start (`"2. 위 사업의 입찰·낙찰, "` = 16 units).
+`start=16` was verified to land exactly before the highlighted text by
+counting UTF-16 code units from the paragraph start (the preceding text,
+including its numbered-list marker, is 16 units).
 
 ### Paragraph correlation (binmodel ↔ parsed tree)
 

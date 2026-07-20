@@ -1158,7 +1158,7 @@ from lxml import etree
 from hwp2hwpx.convert import convert
 from hwp2hwpx.constants import NS
 
-SAMPLE = "samples/3.과업지시서_070.hwp"
+SAMPLE = "samples/3.*.hwp"
 
 
 def _hp(t):
@@ -1218,8 +1218,8 @@ from hwp2hwpx.convert import convert
 from hwp2hwpx.fidelity.diff import report
 import tempfile, os
 out=os.path.join(tempfile.mkdtemp(),'o.hwpx')
-convert('samples/3.과업지시서_070.hwp', out)
-print(report(out, 'samples/3.과업지시서_070.hwpx'))
+convert('samples/3.*.hwp', out)
+print(report(out, 'samples/3.*.hwpx'))
 "
 ```
 Expected: `Contents/section0.xml` match materially higher than the ~19.9% baseline (tc/cellAddr/cellSpan/subList no longer in the top-missing list), and header.xml match up (borderFills now present). Record the new numbers in the commit message or report.
@@ -1233,7 +1233,7 @@ Expected: all pass (milestone-1 + tables).
 
 Run:
 ```bash
-.venv/bin/hwp2hwpx "samples/4.제안요청서_070.hwp" -o /tmp/tables_out.hwpx && .venv/bin/python -c "import zipfile; z=zipfile.ZipFile('/tmp/tables_out.hwpx'); s=z.read('Contents/section0.xml'); print('tbl count:', s.count(b'<hp:tbl'))"
+.venv/bin/hwp2hwpx "samples/4.*.hwp" -o /tmp/tables_out.hwpx && .venv/bin/python -c "import zipfile; z=zipfile.ZipFile('/tmp/tables_out.hwpx'); s=z.read('Contents/section0.xml'); print('tbl count:', s.count(b'<hp:tbl'))"
 ```
 Expected: prints a non-zero `tbl count`. If Hancom Office is available, open `/tmp/tables_out.hwpx` and confirm tables render with borders and cell text.
 
