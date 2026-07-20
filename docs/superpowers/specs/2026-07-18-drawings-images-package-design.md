@@ -6,8 +6,9 @@
 
 ## Goal
 
-Close the fidelity and correctness gaps exposed by the third sample
-(`20131106 ETRI SW혁신전략(안)-실장보고`): recover a silently-dropped embedded
+Close the fidelity and correctness gaps exposed by the third sample (the
+"2013" sample; full filename redacted from this doc post-hoc, see privacy
+sweep): recover a silently-dropped embedded
 JPEG, render text-boxes, and emit the missing package-metadata parts. The
 package-metadata work is general (affects all three samples); the drawing work
 is exercised by the 2013 sample.
