@@ -175,8 +175,13 @@ Known, deliberate non-goals (documented in the project's design notes):
 
 ## License
 
-GPL v3 — see `LICENSE`. This project depends on `pyhwp`, which is licensed
-under the GNU GPL v3, so this project is distributed under the same license.
+AGPL-3.0-or-later. See [LICENSE](LICENSE).
+
+This project reads HWP files with [pyhwp](https://github.com/mete0r/pyhwp),
+which is AGPL-3.0-or-later, and imports it in-process rather than invoking it
+as a separate program. The combined work is therefore distributed under the
+same terms. Note that the AGPL's section 13 obliges you to offer source to
+users who interact with a modified version over a network.
 
 ## Status
 
@@ -186,3 +191,16 @@ bullets/numbering, border/fills, drawing objects (lines, pictures), page and
 section settings, document/package metadata, and highlight ("mark pen")
 formatting. See `docs/` for design notes and implementation plans per
 feature area.
+
+## Releasing
+
+Not yet published to PyPI. When it is, a release is:
+
+```bash
+# 1. bump `version` in pyproject.toml (semantic; 0.x = output format may shift)
+# 2. commit the bump, then:
+git tag v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+python -m build
+python -m twine check dist/*
+python -m twine upload dist/*
+```
